@@ -1,0 +1,85 @@
+{
+  "agent": "Lyria",
+  "entries": [
+    {
+      "tick": 0,
+      "summary": "Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: [Entry Chamber] Kael attacks Goblin Scout for 5 damage. (Goblin Scout HP: 0/4) Goblin Scout is slain! Lyria says: \"\"Greetings, Kael and Finn. I am Lyria. Before we venture deeper into Durnhollow, w... | [Entry Chamber] Lyria says: \"\"protection while I cast. What are your combat strengths? I suggest we move cautiously and let me scout ahead with magic missiles when we encounter enemies.\"\" (heard by... | [Guard Barracks] Kael attacks Goblin Guard for 5 damage. (Goblin Guard HP: 1/6) Goblin Guard retaliates against Kael for 1 damage. (Kael HP: 14/15) Lyria moves north to Guard Barracks. Sees: Kael, ... | [Guard Barracks] Marcus says: Marcus grips his bloodied sword with trembling hands, his eyes wide with terror as he looks past you toward the fortress entrance. \"The goblins... they came shrieking ... | [Guard Barracks] Marcus says: Marcus grips Kael's arm with bloodied fingers, his eyes wide with terror. \"The goblins... they came with the first light, but they were fleeing something deeper. I've ... | [Guard Barracks] Kael says: \"\"Marcus, you've fought bravely! Rest here while we push deeper and face whatever darkness drove those goblins to flee. We'll make sure it doesn't return to threaten you... | [Guard Barracks] Lyria says: \"\"Marcus, your warning is noted. The shadows you describe suggest we face something far more dangerous than mere goblins. Finn, we should proceed with extreme caution -... | [Guard Barracks] Marcus says: Marcus clutches his bandaged arm, eyes darting toward the fortress entrance as he speaks to Lyria. \"The goblins came at first light, but they were fleeing something de... | [Guard Barracks] Lyria says: \"\"Marcus, we understand the gravity of what lies ahead. Rest and recover - we'll need you to hold this position as our fallback point. Kael and Finn, we should examine ... | [Guard Barracks] Lyria picks up Rusty Sword. Equipped as weapon (ATK:3). | [Guard Barracks] Marcus says: Marcus clutches his bandaged arm, eyes darting nervously toward the fortress entrance. \"The goblins... they came with the dawn, aye, but they were fleeing something,\" ... | [Guard Barracks] Lyria says: \"\"Marcus has given us crucial intelligence. Something powerful enough to terrify goblins awaits us deeper in the fortress. We should explore systematically - I suggest ..."
+    },
+    {
+      "tick": 14,
+      "summary": "[Storage Room] Lyria moves east to Storage Room."
+    },
+    {
+      "tick": 15,
+      "summary": "[Storage Room] Lyria picks up Iron Shield. Equipped as armor (PDEF:3)."
+    },
+    {
+      "tick": 16,
+      "summary": "[Guard Barracks] Lyria moves west to Guard Barracks."
+    },
+    {
+      "tick": 17,
+      "summary": "[Barracks Hall] Lyria moves north to Barracks Hall."
+    },
+    {
+      "tick": 28,
+      "summary": "[Barracks Hall] Kael moves south to Barracks Hall. Sees: Lyria. No NPC named 'Kael' here."
+    },
+    {
+      "tick": 29,
+      "summary": "[Barracks Hall] No NPC named 'lyria' here. Lyria says: \"\"Kael, I see you've joined me in the Barracks Hall. Before we proceed deeper into the fortress, we should coordinate our approach. What's you..."
+    },
+    {
+      "tick": 30,
+      "summary": "[Barracks Hall] No NPC named 'Lyria' here. Finn says: \"\"Lyria! Good to see you. Kael and I just cleared the crypt above - found this ring from a bone mage. We're heading south toward the Rift. What..."
+    },
+    {
+      "tick": 31,
+      "summary": "[Barracks Hall] Kael says: \"\"Lyria! By the gods, it's good to see you alive in this cursed place! Finn and I have been cutting through undead and goblins. We're pushing south toward the Shadowfell\"..."
+    },
+    {
+      "tick": 32,
+      "summary": "[Barracks Hall] Kael says: \"\"Rift! We need to press on together - three warriors are better than two! What dangers have you faced down here, Lyria? And which path do you think leads us closest to t..."
+    },
+    {
+      "tick": 33,
+      "summary": "[Central Corridor] Lyria moves north to Central Corridor. Finn moves north to Central Corridor. Sees: Lyria."
+    },
+    {
+      "tick": 34,
+      "summary": "[Central Corridor] No NPC named 'Finn' here. No NPC named 'Lyria' here."
+    },
+    {
+      "tick": 35,
+      "summary": "[Central Corridor] Lyria says: \"\"Finn, I can see you're here with me in the Central Corridor. We should coordinate our next move - which direction do you think leads us closer to the Shadowfell Rif..."
+    },
+    {
+      "tick": 37,
+      "summary": "[Central Corridor] No NPC named 'Finn' here. Finn says: \"\"Lyria, I've scouted the paths. South leads deeper to the Rift - that's our main route. East and north are unknowns. We should stick togethe..."
+    },
+    {
+      "tick": 38,
+      "summary": "[Central Corridor] Lyria says: \"\"Finn, based on your scouting, south appears to be our best path toward the Shadowfell Rift. However, I suggest we proceed cautiously - shall we move south together ..."
+    },
+    {
+      "tick": 40,
+      "summary": "[Barracks Hall] No NPC named 'Finn' here. Lyria moves south to Barracks Hall. Sees: Kael, Finn. Finn says: \"\"Kael, Lyria - we're all together now. I've been mapping our route. South leads deeper to..."
+    },
+    {
+      "tick": 41,
+      "summary": "[Barracks Hall] Kael says: \"\"Comrades! We three warriors stand united against the darkness! Finn speaks truly - south leads deeper into the fortress toward our destiny. Let us charge forth together..."
+    },
+    {
+      "tick": 42,
+      "summary": "[Barracks Hall] Lyria says: \"\"...magical reserves? I'm at full strength with 8 HP and 15 MP. We should coordinate our formation before proceeding south - I'll stay in the rear for spellcasting supp..."
+    },
+    {
+      "tick": 44,
+      "summary": "[Barracks Hall] Lyria says: \"\"Kael, Finn - I'm ready to advance. Since south leads deeper toward the Rift, let's proceed in formation - you two take point while I provide magical support from the r..."
+    },
+    {
+      "tick": 46,
+      "summary": "[Barracks Hall] Lyria says: \"\"I'm ready to proceed south toward the Rift. Kael and Finn, shall we advance together in formation?\"\" (nobody else is here)"
+    }
+  ]
+}

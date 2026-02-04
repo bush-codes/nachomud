@@ -1,0 +1,85 @@
+{
+  "agent": "Kael",
+  "entries": [
+    {
+      "tick": 0,
+      "summary": "Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: Earlier: [Entry Chamber] Kael attacks Goblin Scout for 5 damage. (Goblin Scout HP: 0/4) Goblin Scout is slain! Lyria says: \"\"Greetings, Kael and Finn. I am Lyria. Before we venture deeper into Durnhollow, w... | [Guard Barracks] Kael moves north to Guard Barracks. Enemies: Goblin Guard. Finn moves north to Guard Barracks. Sees: Kael. Enemies: Goblin Guard. | [Guard Barracks] Kael attacks Goblin Guard for 5 damage. (Goblin Guard HP: 1/6) Goblin Guard retaliates against Kael for 1 damage. (Kael HP: 14/15) Lyria moves north to Guard Barracks. Sees: Kael, ... | [Guard Barracks] Marcus says: Marcus grips his bloodied sword with trembling hands, his eyes wide with terror as he looks past you toward the fortress entrance. \"The goblins... they came shrieking ... | [Guard Barracks] Marcus says: Marcus grips Kael's arm with bloodied fingers, his eyes wide with terror. \"The goblins... they came with the first light, but they were fleeing something deeper. I've ... | [Guard Barracks] Kael says: \"\"Marcus, you've fought bravely! Rest here while we push deeper and face whatever darkness drove those goblins to flee. We'll make sure it doesn't return to threaten you... | [Barracks Hall] Kael moves north to Barracks Hall. Enemies: Goblin Raider, Goblin Shaman. | [Barracks Hall] Kael attacks Goblin Shaman for 5 damage. (Goblin Shaman HP: 0/4) Goblin Shaman is slain! Loot dropped: Bone Ring. Finn moves north to Barracks Hall. Sees: Kael. Enemies: Goblin Raider. | [Barracks Hall] Kael attacks Goblin Raider for 5 damage. (Goblin Raider HP: 0/5) Goblin Raider is slain! Finn picks up Bone Ring. Equipped as ring (MDMG:4). | [Central Corridor] Kael moves north to Central Corridor. | [Great Hall] Kael moves north to Great Hall. Enemies: Shadow Warrior, Wraith. | [Great Hall] Kael attacks Shadow Warrior for 5 damage. (Shadow Warrior HP: 4/9) Shadow Warrior retaliates against Kael for 1 damage. (Kael HP: 13/15) | [Great Hall] Kael attacks Shadow Warrior for 5 damage. (Shadow Warrior HP: 0/9) Shadow Warrior is slain! Loot dropped: Shadow Blade. Finn moves north to Great Hall. Sees: Kael. Enemies: Wraith. | [Great Hall] Kael picks up Shadow Blade. Equipped as weapon (ATK:6). Finn attacks Wraith for 4 damage. (Wraith HP: 4/8) Wraith retaliates against Finn for 1 damage. (Finn HP: 11/12) | [Great Hall] Kael attacks Wraith for 6 damage. (Wraith HP: 0/8) Wraith is slain! | [Spiral Staircase] Kael moves north to Spiral Staircase. Finn moves north to Spiral Staircase. Sees: Kael. | [Crypt Entrance] Kael moves north to Crypt Entrance. Enemies: Skeleton Guardian, Bone Mage. | [Crypt Entrance] Kael attacks Skeleton Guardian for 6 damage. (Skeleton Guardian HP: 2/8) Skeleton Guardian retaliates against Kael for 1 damage. (Kael HP: 12/15) | [Crypt Entrance] Kael attacks Skeleton Guardian for 6 damage. (Skeleton Guardian HP: 0/8) Skeleton Guardian is slain! Finn moves north to Crypt Entrance. Sees: Kael. Enemies: Bone Mage. | [Crypt Entrance] Kael attacks Bone Mage for 6 damage. (Bone Mage HP: 0/6) Bone Mage is slain! Loot dropped: Necromancer's Ring. Finn picks up Necromancer's Ring. Equipped as ring (MDMG:7). | [Crypt Entrance] Kael says: \"\"Finn! This crypt reeks of death and shadow. Which path shall we take - south deeper into the fortress, east to explore, or north further into the crypt? Stay close, th... | [Crypt Entrance] Finn says: \"\"Three paths ahead. South goes deeper into the main fortress - likely toward our target. East and north are unknowns. I say we head south and stay on mission, but watch... | [Spiral Staircase] Kael moves south to Spiral Staircase. Finn moves south to Spiral Staircase. Sees: Kael. | [Great Hall] Kael moves south to Great Hall. Finn moves south to Great Hall. Sees: Kael. | [Central Corridor] Kael moves south to Central Corridor. Finn moves south to Central Corridor. Sees: Kael. | [Central Corridor] Kael says: \"\"Three paths before us, Finn! South leads deeper into the fortress - that's our main route to the Rift. East and north are mysteries. Which way do you think we should... | [Barracks Hall] Kael moves south to Barracks Hall. Sees: Lyria. No NPC named 'Kael' here. | [Barracks Hall] No NPC named 'lyria' here. Lyria says: \"\"Kael, I see you've joined me in the Barracks Hall. Before we proceed deeper into the fortress, we should coordinate our approach. What's you..."
+    },
+    {
+      "tick": 30,
+      "summary": "[Barracks Hall] No NPC named 'Lyria' here. Finn says: \"\"Lyria! Good to see you. Kael and I just cleared the crypt above - found this ring from a bone mage. We're heading south toward the Rift. What..."
+    },
+    {
+      "tick": 31,
+      "summary": "[Barracks Hall] Kael says: \"\"Lyria! By the gods, it's good to see you alive in this cursed place! Finn and I have been cutting through undead and goblins. We're pushing south toward the Shadowfell\"..."
+    },
+    {
+      "tick": 32,
+      "summary": "[Barracks Hall] Kael says: \"\"Rift! We need to press on together - three warriors are better than two! What dangers have you faced down here, Lyria? And which path do you think leads us closest to t..."
+    },
+    {
+      "tick": 33,
+      "summary": "[Barracks Hall] No NPC named 'lyria' here."
+    },
+    {
+      "tick": 35,
+      "summary": "[Barracks Hall] Kael says: \"\"Lyria and Finn! We stand ready in this battle-scarred hall. The stench of goblins fills my nostrils - they've been driven from here, but greater threats await! Which pa..."
+    },
+    {
+      "tick": 37,
+      "summary": "[Barracks Hall] No NPC named 'finn' here."
+    },
+    {
+      "tick": 38,
+      "summary": "[Barracks Hall] Finn moves south to Barracks Hall. Sees: Kael."
+    },
+    {
+      "tick": 39,
+      "summary": "[Barracks Hall] Kael says: \"\"Finn! We've reunited in this forsaken barracks. The goblins have fled but left their foul mark on this place. We need to push deeper - the Rift awaits! Which path shall..."
+    },
+    {
+      "tick": 40,
+      "summary": "[Barracks Hall] No NPC named 'Finn' here. Lyria moves south to Barracks Hall. Sees: Kael, Finn. Finn says: \"\"Kael, Lyria - we're all together now. I've been mapping our route. South leads deeper to..."
+    },
+    {
+      "tick": 41,
+      "summary": "[Barracks Hall] Kael says: \"\"Comrades! We three warriors stand united against the darkness! Finn speaks truly - south leads deeper into the fortress toward our destiny. Let us charge forth together..."
+    },
+    {
+      "tick": 42,
+      "summary": "[Guard Barracks] Kael moves south to Guard Barracks. Sees: Finn. No NPC named 'Marcus the Wounded Soldier' here."
+    },
+    {
+      "tick": 43,
+      "summary": "[Guard Barracks] No NPC named 'Marcus the Wounded Soldier' here. No NPC named 'Marcus the Wounded Soldier' here."
+    },
+    {
+      "tick": 44,
+      "summary": "[Guard Barracks] No NPC named 'Marcus the Wounded Soldier' here. Marcus says: Marcus grips Finn's arm with a bloodied hand, his eyes wide with terror. \"The goblins were just the beginning, friend\u2014t..."
+    },
+    {
+      "tick": 45,
+      "summary": "[Guard Barracks] No NPC named 'Marcus the Wounded Soldier' here. Finn says: \"\"Marcus speaks truth - something powerful drove those goblins out. Kael, we need to move carefully. The shadows are feed..."
+    },
+    {
+      "tick": 46,
+      "summary": "[Guard Barracks] Marcus says: Marcus clutches his bandaged arm, eyes haunted as he looks toward the fortress entrance. \"The goblins came screaming out of the depths at first light, but they were ru..."
+    },
+    {
+      "tick": 47,
+      "summary": "[Guard Barracks] Kael says: \"\"Marcus speaks of horrors beyond the goblins! Finn, we must steel ourselves for what lurks in the depths. The shadows themselves are our enemy now - but fear not! My bl..."
+    },
+    {
+      "tick": 48,
+      "summary": "[Guard Barracks] Marcus says: Marcus grips Kael's arm with a bloodied hand, his eyes wide with terror. \"The goblins... they were just the first wave at dawn, but it's what drove them up from below ..."
+    },
+    {
+      "tick": 49,
+      "summary": "[Guard Barracks] Kael says: \"\"Marcus, your warning is heeded! The shadows may whisper death, but my blade will answer with steel and fury! Finn, we know our path - south leads deeper toward the Rif..."
+    },
+    {
+      "tick": 50,
+      "summary": "[Entry Chamber] Kael moves south to Entry Chamber."
+    }
+  ]
+}
