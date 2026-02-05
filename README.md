@@ -225,4 +225,6 @@ Agent memories are stored in `data/memories/` for persistence between decisions.
 
 ## License
 
-[Add your license here]
+MIT License -- see [LICENSE](LICENSE) for details.
+
+The `neatMUD/rtNEAT/` directory contains Kenneth Stanley's rtNEAT library, which is Copyright (c) The University of Texas at Austin, 2006, and is released under a separate UT Austin Research License for non-commercial/research use only. It is not covered by the MIT license.
