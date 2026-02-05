@@ -30,6 +30,21 @@ The original project lives in the `neatMUD/` directory:
 - **`neatMUD/rtNEAT/`** -- Kenneth Stanley's rtNEAT library (C++) for evolving neural network topologies in real time
 - **`neatMUD/kinchoMUD/docs/Research/`** -- Original research reports and proposals from 2007-2009
 
+#### Building & Running KinchoMUD
+
+The legacy C++ codebase still compiles with a modern g++ toolchain:
+
+```bash
+cd neatMUD/kinchoMUD
+g++ -O0 -g3 -std=c++14 -Wno-write-strings -Wno-address \
+    -o kinchoMUD \
+    src/spoc2.cpp src/Console.cpp src/Login.cpp src/Mob.cpp \
+    src/MobBrain.cpp src/Player.cpp src/Room.cpp src/Stat.cpp
+./kinchoMUD
+```
+
+Log in as `kincho` at the prompt. You'll spawn in the Center Hallway with a penguin. Try commands like `look`, `north`, `hit`, `cure`, `fire`, and `poison`.
+
 ### NachoMUD: The Next Iteration
 
 NachoMUD revisits the same core questions -- *can AI agents make strategic combat decisions, cooperate in parties, and behave with distinct personalities?* -- but replaces neuroevolution with large language models.
