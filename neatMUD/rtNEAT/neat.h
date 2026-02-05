@@ -63,18 +63,18 @@ namespace NEAT {
 	int getUnitCount(const char *string, const char *set);
 
 	// Inline Random Functions 
-	extern inline int randposneg() {
+	inline int randposneg() {
         if (rand()%2) 
             return 1; 
         else 
             return -1;
     }
     
-	extern inline int randint(int x,int y) {
+	inline int randint(int x,int y) {
         return rand()%(y-x+1)+x;
     }
 
-    extern inline double randfloat() {
+    inline double randfloat() {
         return rand() / (double) RAND_MAX;        
     }
 

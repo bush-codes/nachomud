@@ -23,22 +23,22 @@
 #include "MasterStatMap.cpp"
 #include "Console.h"
 
-//#include "rtNEAT.1.0/neat.h"
-//#include "rtNEAT.1.0/network.h"
-//#include "rtNEAT.1.0/population.h"
-//#include "rtNEAT.1.0/organism.h"
-//#include "rtNEAT.1.0/genome.h"
-//#include "rtNEAT.1.0/species.h"
+#include "neat.h"
+#include "network.h"
+#include "population.h"
+#include "organism.h"
+#include "genome.h"
+#include "species.h"
 
 using namespace std;
 using namespace rapidxml;
-//using namespace NEAT;
+using namespace NEAT;
 
 class MobBrain
 {
 	private:
-//		Genome* gen;
-//		Population* pop;
+		Genome* gen;
+		Population* pop;
 		vector<int> freeOrganisms;
 		vector<int> doneOrganisms;
 		vector<double> currentFitness;

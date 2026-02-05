@@ -32,18 +32,43 @@ The original project lives in the `neatMUD/` directory:
 
 #### Building & Running KinchoMUD
 
-The legacy C++ codebase still compiles with a modern g++ toolchain:
+The legacy C++ codebase compiles with a modern g++ toolchain. The rtNEAT library must be built first as a static archive, then linked into KinchoMUD.
+
+**1. Build rtNEAT library:**
 
 ```bash
-cd neatMUD/kinchoMUD
+cd neatMUD/rtNEAT
+make librtneat.a
+```
+
+**2. Build KinchoMUD with rtNEAT:**
+
+```bash
+cd ../kinchoMUD
 g++ -O0 -g3 -std=c++14 -Wno-write-strings -Wno-address \
+    -I../rtNEAT \
     -o kinchoMUD \
     src/spoc2.cpp src/Console.cpp src/Login.cpp src/Mob.cpp \
-    src/MobBrain.cpp src/Player.cpp src/Room.cpp src/Stat.cpp
+    src/MobBrain.cpp src/Player.cpp src/Room.cpp src/Stat.cpp \
+    ../rtNEAT/librtneat.a
+```
+
+**3. Run:**
+
+```bash
 ./kinchoMUD
 ```
 
-Log in as `kincho` at the prompt. You'll spawn in the Center Hallway with a penguin. Try commands like `look`, `north`, `hit`, `cure`, `fire`, and `poison`.
+Log in as `kincho` at the prompt. You'll spawn in the Center Hallway with a penguin. Try commands like `look`, `north`, `hit goblin`, `cure`, `fire`, and `poison`.
+
+#### Battle Simulations
+
+KinchoMUD includes two automated battle simulation modes used in the original research:
+
+- **`auto 0 goblin`** -- 1v1 autoBattle. The player auto-attacks while the goblin uses its evolved neural network brain to choose actions. Runs in an infinite loop, printing fitness and action counts per encounter.
+- **`auto 1 goblin`** -- Multi-agent party combat (autoBattle2). A 3v1 party of Paladin, Magician, and Sorcerer vs. a Skeleton across 250,000 encounters. Each mob's brain evolves independently via rtNEAT, with per-encounter stats showing action counts and fitness scores.
+
+These simulations demonstrate how rtNEAT evolves combat tactics: agents learn to prefer attacking over idling, manage MP for spells like cure and poison, and develop distinct behavioral profiles based on their stat configurations.
 
 ### NachoMUD: The Next Iteration
 

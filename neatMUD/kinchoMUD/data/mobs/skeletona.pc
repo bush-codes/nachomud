@@ -1,0 +1,14 @@
+<mob mfd="10">
+	<fname>Skeleton A</fname>
+	<stat sd="0" name="lvl" current="7" xpinitial="100"/>
+	<stat sd="1" name="hp" initial="30" growth="6"/>
+	<stat sd="2" name="mp" initial="0" growth="0"/>
+	<stat sd="3" name="str" initial="7" growth="3.5"/>
+	<stat sd="4" name="dex" initial="5" growth="2.5"/>
+	<stat sd="5" name="vit" initial="4" growth="2"/>
+	<stat sd="6" name="int" initial="6" growth="3"/>
+	<stat sd="7" name="wil" initial="3" growth="1.5"/>
+	<stat sd="8" name="spd" initial="15" growth="0"/>
+	<stat sd="9" name="turn" initial="100"/>
+	<action actid="15"/>
+</mob>

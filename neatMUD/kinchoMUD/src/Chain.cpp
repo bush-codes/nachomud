@@ -270,7 +270,7 @@ class Chain
 		Chain() // Private constructor
 		{
 			srand ( time(NULL));
-//			NEAT::load_neat_params("data/params.neat");
+			NEAT::load_neat_params("data/params.neat");
 			//Login Page
 			lp = Login("data/master.login"); //TODO loginpage, use <p> elements
 
