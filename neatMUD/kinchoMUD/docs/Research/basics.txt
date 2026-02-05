@@ -1,0 +1,53 @@
+int v //alue
+int r //esist
+int t //emp
+int a
+int b
+int c
+int d
+int e
+source
+target
+
+clrVars()
+getVar(int)
+addVar(int add, int base)
+multVar(int mult, int base)
+expVar(int exp, int base)
+
+getRawStat(source/target, buff_stat)
+getBuffStat
+
+getRawStatMax(source/target, buff_stat)
+getBuffStatMax
+
+
+//compares value vs resist
+comp(int value, int resist)
+
+//comp <= 0
+fullResist(int value, int resist)
+
+//comp < 1/2 value
+halfResist(int value, int resist)
+
+noresist(int value, int resist)
+
+applyBlind(comp, target, stat)
+applyBound(comp, target, stat)
+
+isBuffed(target, buff)
+isBuffed(target)
+isLinked(target, buff)
+linkTarget(target, buff)
+
+//isolated buffs, linked buffs
+buff(target, buff)
+debuff(target, buff)
+debuff(target)
+debuffAll(target)?
+
+//%s source name, %t target name, %i
+print(string out, int i)
+
+if & while check first child node's return to determine what to do

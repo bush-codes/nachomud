@@ -1,0 +1,16 @@
+<mob mfd="0">
+	<fname>Fighter</fname>
+	<stat sd="0" name="lvl" initial="1" growth="1" xpinitial="100" xpgrowth="50"/>
+	<stat sd="1" name="turn" initial="100" regenInitial="24"/>
+	<stat sd="2" name="hp" initial="35" growth="14" regenInitial="1" regenGrowth=".5"/>
+	<stat sd="3" name="atk" initial="7" growth="3.5" regenInitial="1"/>
+	<stat sd="4" name="def" initial="6" growth="3" regenInitial="1"/>
+	<stat sd="5" name="acc" initial="5" growth="2.5" regenInitial="1"/>
+	<stat sd="6" name="eva" initial="4" growth="2" regenInitial="1"/>
+	<stat sd="7" name="mp" initial="35" growth="14" regenInitial="1" regenGrowth=".5"/>
+	<stat sd="8" name="matk" initial="0" growth="0" regenInitial="0"/>
+	<stat sd="9" name="mdef" initial="6" growth="3" regenInitial="1"/>
+	<stat sd="10" name="macc" initial="0" growth="0" regenInitial="0"/>
+	<stat sd="11" name="meva" initial="4" growth="2" regenInitial="1"/>
+	<action actid="15"/>
+</mob>

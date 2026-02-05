@@ -1,0 +1,68 @@
+xp growth in stats
+
+action reform
+	clean up master.action
+	match chain's request action to master.action
+	write up action interpreter
+	action may trigger an event
+		(onaction)
+		(from source or target buff, room, area)
+		(hit vs being hit)
+		<onaction ad='42' src='1' tgt='0' rad='43'/>
+			ad action that triggers event
+			src event triggers if i am the source of the action
+			tgt event triggers if i am the target of the action
+			rad reaction action
+
+buffs
+	stat
+		create map for stat additions
+	effect
+		buff_act buff_effect
+		action applies effect
+		effect may sit dormant waiting for an event (protect)
+		effect may do something on a timer(poison)
+
+		create list of actions
+		iterate thru the list performing each effect if applicable
+
+equipment
+	head/body/etc slots
+	need equip/dequip
+	effects should be through buffs
+
+items
+	basic inventory
+	keys
+	use item action
+	items perform an action on use
+
+locks
+
+containers/boxes/coffers/bags
+
+water/fire/weather/creep/dark flow in areas/rooms
+	room buffs?
+	targetable rooms?
+
+area/room ownership?
+
+telepoints/safehavens
+
+player persistence
+
+quest flags/room events
+	flags go w/ player files
+	room events in room files
+
+mob script/ai
+
+shops
+
+hub?
+
+content
+	classes
+	mobs
+
+android!

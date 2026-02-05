@@ -1,0 +1,15 @@
+S 3.5 Paladin
+A 3   Dark Knight
+B 2.5 Sorcerer
+C 2   Cleric
+D 1.5 Magician
+E 1
+F .5
+
+containers
+initial 10x letter rating
+growth 4x letter rating
+
+standard stats
+initial 2x letter rating
+growth 1x letter rating

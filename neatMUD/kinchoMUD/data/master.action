@@ -1,0 +1,324 @@
+<actionlist>
+<!-- System Actions -->
+    <action ad="0">
+    	<name>login</name>
+    	<description>Login to the game as a player</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="1">
+    	<name>quit</name>
+    	<description>Quit the game</description>
+    	<numfields>0</numfields>
+    </action>
+    <action ad="2">
+    	<name>message</name>
+    	<description>Send a message</description>
+    	<numfields>0</numfields>
+    	<!-- message srcType srcNum tgtType tgtNum content -->
+    	<!-- source - system, mobs, etc
+    		 target - mob, room, area, chain, group, alliance, guild
+    	-->
+    </action>
+<!-- Movement actions -->
+<!--
+    <action ad="3">
+    	<name>move</name>
+    	<description>Move a mob or item in a designated direction.</description>
+    	<numfields>2</numfields>
+			move target direction
+    </action>
+    <action ad="4">
+    	<name>teleport</name>
+    	<description>Teleport a mob or item to a designated room.</description>
+    	<numfields>4</numfields>
+    		teleport target rd ad customMessage
+    		useful for general movement, but also good for scripted traps
+    		ie. use teleport for a pit trap and have a customMessage of "You fell to a room below you."
+    </action>
+    <action ad="5">
+    	<name>turn</name>
+    	<description>Change a mob's facing.</description>
+    	<numfields>2</numfields>
+			turn mob direction
+    </action>
+-->		
+    <action ad="3">
+    	<name>northwest</name>
+    	<description>Move northwest</description>
+    	<numfields>0</numfields>
+    </action>
+    <action ad="4">
+    	<name>north</name>
+    	<description>Move north</description>
+    	<numfields>0</numfields>
+    </action>
+    <action ad="5">
+    	<name>northeast</name>
+    	<description>Move northeast</description>
+    	<numfields>0</numfields>
+    </action>
+    <action ad="6">
+    	<name>east</name>
+    	<description>Move east</description>
+    	<numfields>0</numfields>
+    </action>
+    <action ad="7">
+    	<name>southeast</name>
+    	<description>Move southeast</description>
+    	<numfields>0</numfields>
+    </action>
+    <action ad="8">
+    	<name>south</name>
+    	<description>Move south</description>
+    	<numfields>0</numfields>
+    </action>
+    <action ad="9">
+    	<name>southwest</name>
+    	<description>Move southwest</description>
+    	<numfields>0</numfields>
+    </action>
+    <action ad="10">
+    	<name>west</name>
+    	<description>Move west</description>
+    	<numfields>0</numfields>
+    </action>
+    <action ad="11">
+    	<name>up</name>
+    	<description>Move up</description>
+    	<numfields>0</numfields>
+    </action>
+    <action ad="12">
+    	<name>down</name>
+    	<description>Move down</description>
+    	<numfields>0</numfields>
+    </action>
+<!-- Room Modification Actions -->
+    <action ad="13">
+    	<name>look</name>
+    	<description>Display the contents of a room.</description>
+    	<numfields>0</numfields>
+    </action>
+    <action ad="14">
+    	<name>open</name>
+    	<description>Attempt to open a door.</description>
+    	<numfields>1</numfields>
+    	<!-- open direction -->
+    </action>
+<!--
+    <action ad="14">
+    	<name>openByID</name>
+    	<description>Open a door by ID.</description>
+    	<numfields>2</numfields>
+    		open dd ad
+    </action>
+-->
+    <action ad="15">
+    	<name>close</name>
+    	<description>Attempt to close a door.</description>
+    	<numfields>1</numfields>
+    	<!-- close direction -->
+    </action>
+<!--
+    <action ad="14">
+    	<name>closeByID</name>
+    	<description>Close a door by ID.</description>
+    	<numfields>2</numfields>
+    		close dd ad
+    </action>
+-->
+    <action ad="16">
+    	<name>lock</name>
+    	<description>Attempt to lock a door.</description>
+    	<numfields>2</numfields>
+    	<!-- lock direction key -->
+    </action>
+<!--
+    <action ad="14">
+    	<name>lockByID</name>
+    	<description>Lock a door by ID.</description>
+    	<numfields>2</numfields>
+    		lock dd ad
+    </action>
+-->
+    <action ad="17">
+    	<name>unlock</name>
+    	<description>Attempt to unlock a door.</description>
+    	<numfields>1</numfields>
+    	<!-- unlock direction -->
+    </action>
+<!--
+    <action ad="14">
+    	<name>unlockByID</name>
+    	<description>Unlock a door by ID.</description>
+    	<numfields>2</numfields>
+    		unlock dd ad
+    </action>
+-->
+    <action ad="18">
+    	<name>search</name>
+    	<description>Look for hidden details in a room.</description>
+    	<numfields>0</numfields>
+    </action>
+<!--
+    <action ad="19">
+    	<name>resChk</name>
+    	<description>Checks the resistance of a Mob to another's stats.</description>
+    	<numfields>2</numfields>   	
+    		resChk src tgt type
+    		target - mob, item, room, area, chain, group, alliance, guild
+    		debuff - defaults to last debuff given
+    </action>
+-->
+<!-- Friendly Actions -->
+    <action ad="19">
+    	<name>addBuff</name>
+    	<description>Add a buff to a target.</description>
+    	<numfields>2</numfields>   	
+    	<!-- addBuff target buff -->
+    	<!-- target - mob, item, room, area, chain, group, alliance, guild -->
+    </action>
+<!--
+    <action ad="19">
+    	<name>remDebuff</name>
+    	<description>Remove a specific debuff from a target.</description>
+    	<numfields>2</numfields>   	
+    		remBuff target debuff
+    		target - mob, item, room, area, chain, group, alliance, guild
+    		debuff - defaults to last debuff given
+    </action>
+-->
+<!-- Hostile Actions -->
+<!--
+    <action ad="19">
+    	<name>addDebuff</name>
+    	<description>Add a debuff to a target.</description>
+    	<numfields>2</numfields>   	
+    		addDebuff target debuff
+    		target - mob, item, room, area, chain, group, alliance, guild
+    </action>
+    <action ad="19">
+    	<name>remBuff</name>
+    	<description>Remove a given buff from a target.</description>
+    	<numfields>2</numfields>   	
+    		remBuff target buff
+    		target - mob, item, room, area, chain, group, alliance, guild
+    		buff - defaults to last buff given
+    </action>
+-->
+<!-- Other Subactions? -->
+<!--
+    <action ad="19">
+    	<name>fadd</name>
+    	<description>Flat Add - Adds a given amount to a container.</description>
+    	<numfields>3</numfields>
+    		addContainer tgt container num
+    		tgt - mob
+    </action>
+    <action ad="19">
+    	<name>fvc</name>
+    	<description>Flat vs. Container - Adds a given amount to a container. (Source has no skill, Target will resist)</description>
+    	<numfields>3</numfields>
+    		addContainer tgt tgtChgCon min add type
+    		tgt - mob
+    </action>    
+    <action ad="19">
+    	<name>cvf</name>
+    	<description>Container vs. Flat - Adds a given amount to a container. (Source has skill, Target may not resist)</description>
+    	<numfields>3</numfields>
+    		addContainer src tgt tgtChgCon min add type
+    		tgt - mob
+    </action>    
+    <action ad="19">
+    	<name>cvc</name>
+    	<description>Container vs. Container - Calculates change to a container based on other containers.</description>
+    	<numfields>6</numfields>
+    		calcContainer src tgt tgtChgCon min add type
+    		src - mob
+    		tgt - mob
+    		tgtChgCon - container that will change
+    		min - base damage, affected by the damage type's first def & off stat
+    		add - additive damage, affected by the damage type's second def & off stat
+    		type - type of damage incurred, ie. physical, magical, fire, water, etc.
+    </action>
+-->
+    <action ad="19">
+    	<name>auto</name>
+    	<description>Start auto battle simulation</description>
+    	<numfields>2</numfields>
+    </action>
+    <action ad="20">
+    	<name>hit</name>
+    	<description>Basic melee attack</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="21">
+    	<name>cure</name>
+    	<description>Attempt to restore HP with cure spell</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="22">
+    	<name>fire</name>
+    	<description>Attempt to damage enemy with fire spell</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="23">
+    	<name>poison</name>
+    	<description>Attempt to cast poison Damage-over-time spell on enemy</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="24">
+    	<name>crit</name>
+    	<description>Powerful melee hit at expense of one's own HP</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="25">
+    	<name>idle</name>
+    	<description>Sit idly</description>
+    	<numfields>0</numfields>
+    </action>
+    <action ad="26">
+    	<name>regen</name>
+    	<description>Slowly regenerates an ally's hp</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="27">
+    	<name>refresh</name>
+    	<description>Slowly regenerates an ally's mp</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="28">
+    	<name>drain</name>
+    	<description>Steals an enemy's hp for your own use</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="29">
+    	<name>protect</name>
+    	<description>Greatly increases an ally's defense</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="30">
+    	<name>berserk</name>
+    	<description>Doubles damage given, but also doubles damage received</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="31">
+    	<name>haste</name>
+    	<description>Doubles an ally's speed</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="32">
+    	<name>sleep</name>
+    	<description>Causes a foe to fall asleep</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="33">
+    	<name>blink</name>
+    	<description>Grants a target a protective shadow</description>
+    	<numfields>1</numfields>
+    </action>
+    <action ad="34">
+    	<name>cover</name>
+    	<description>Takes physical damage in place of an ally</description>
+    	<numfields>1</numfields>
+    </action>
+</actionlist>

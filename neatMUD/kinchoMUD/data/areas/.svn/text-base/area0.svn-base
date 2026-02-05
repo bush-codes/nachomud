@@ -1,0 +1,53 @@
+<area ad="0">
+    <name>Tutorial Area</name>
+
+    <room rd="0">
+        <name>Center Hallway</name>
+        <description>You are in a poorly lit hallway with 4 doors. You can also barely make out a ladder that goes both above and below. </description>
+        <exit direction="north" room="1" door="0"/>
+        <exit direction="east"  room="2"/>
+        <exit direction="south" room="3"/>
+        <exit direction="west"  room="4"/>
+	 	<exit direction="up"    room="5"/>
+        <exit direction="down"  room="6"/>
+    </room>
+
+    <room rd="1">
+        <name>Armory</name>
+        <description>In this room you see assorted weapons and armor on the wall.</description>
+        <exit direction="south" room="0"/>
+    </room>
+
+    <room rd="2">
+        <name>Soldier's Quarters</name>
+        <description>You are in a well kept room with beds lining the walls, and a table in the center of the room. </description>
+        <exit direction="west" room="0"/>
+    </room>
+
+    <room rd="3">
+        <name>Kitchen</name>
+        <description>You step into what seems to be a kitchen. Dishes line a long shelf extending the wall furthest from the door. The smell of mold and mildew is almost overwhelming.</description>
+        <exit direction="north" room="0"/>
+    </room>
+
+    <room rd="4">
+        <name>White Room</name>
+        <description>This room is completely white. The room seems to go on forever... it is even difficult to make out where the floor ends and the walls begin. There is something almost holy feeling here. </description>
+        <exit direction="east" room="0"/>
+    </room>
+
+    <room rd="5">
+        <name>Tower Top</name>
+        <description>You are standing outside on top of what seems to be a scouting tower. You see lights flicker from a small village to the south. A bridge extends to the west to another tower top across a slightly overgrown but well traveled path. Despite the full moon, you get the eerie feeling that this land has not seen the sun in ages. </description>
+        <exit direction="down" room="0"/>
+    </room>
+
+    <room rd="6">
+        <name>Dungeon</name>
+        <description>You are standing in an empty dungeon. There is a gratuitous amount of blood on the floor and walls.</description>
+        <exit direction="up" room="0"/>
+    </room>
+    
+    <door dd="0" closed="true"/>
+    
+</area>

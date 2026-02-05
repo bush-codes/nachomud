@@ -1,0 +1,12 @@
+<statmap>
+	<stat sd="0" name="lvl" match="f" container="f"/>
+	<stat sd="1" name="hp" match="f" container="t"/>
+	<stat sd="2" name="mp" match="f" container="t"/>
+	<stat sd="3" name="str" match="t" container="f"/>
+	<stat sd="4" name="dex" match="t" container="f"/>
+	<stat sd="5" name="vit" match="t" container="f"/>
+	<stat sd="6" name="int" match="t" container="f"/>
+	<stat sd="7" name="wil" match="t" container="f"/>
+	<stat sd="8" name="spd" match="t" container="f"/>
+	<stat sd="9" name="turn" match="f" container="f"/>
+</statmap>

@@ -1,0 +1,62 @@
+//doesn't check mana, just an ex
+<action id="42" name="dispel">
+	//resets variables
+	<clrVars/>
+
+	<print arg1="%s casts dispel on %t" arg2="0"/>
+	
+	//load offensive stat from temp into value
+	<getBuffStat arg1="source" arg2="INT"/>
+	<addVar arg1="t" arg2="v"/>
+
+	//load defensive stat from temp into resist
+	<getBuffStat arg1="source" arg2="MND"/>
+	<addVar arg1="t" arg2="r"/>
+
+	//Checks if it was fully resisted
+	<if>	<fullResist arg1="v" arg2="r"/>
+		<print arg1="%t resists!" arg2="0"/>
+		
+	 <else/>
+		<while>	<isBuffed arg1="target"/>
+			<debuff arg1="target"/>
+			<addVar arg1="1" arg2="a"/>
+		</while>
+		<print arg1="%s dispels %i effects." arg2="a"/>
+	</if>
+</action>
+//mite apply negative damage, just an ex
+<action id="0" name="attack">
+	<clrVars/>
+
+	//load accuracy from source
+	<getBuffStat arg1="source" arg2="ACC"/>
+	<addVar arg1="t" arg2="v"/>
+
+	//load evasion from target
+	<getBuffStat arg1="target" arg2="EVA"/>
+	<addVar arg1="t" arg2="r"/>
+
+	<if>	<halfResist arg1="v" arg2="r"/>
+		<print arg1="%t dodges %s's attack." arg2="0"/>
+	 <else/>
+		//reset v,r,t
+		<clrVars/>
+
+		//load attack from source
+		<getBuffStat arg1="source" arg2="ATK"/>
+		<addVar arg1="t" arg2="v"/>
+
+		//load defense from target
+		<getBuffStat arg1="target" arg2="DEF"/>
+		<addVar arg1="t" arg2="r"/>
+
+		//load ATK - DEF into t
+		<comp arg1="v" arg2="r"/>
+
+		//apply the damage
+		<applyBound arg1="t" arg2="target" arg3="HP"/>
+		<print arg1="%s attacks %t for %i damage." arg2="t"/>
+	</if>
+	
+</attack>

@@ -1,0 +1,86 @@
+Over the summer of 2009, we began coding a MUD (Multi-User Dunegeon) SDK for us to use on game endeavors. we ended up seeing a possiblity to add rtNEAT to the MUD, so in Fall 2009 we built our research project around our continuing efforts on building this MUD SDK.
+
+Research notes:
+
+Running Bugs:
+Population output/input broken
+________________________________________________________________________________________________________
+Oct 28 (Experiment 1): Success
+Can agents, with no inputs, learn that hitting is better than sitting idle?
+Currently: 1 output: <.5 is idle, >.5 is hit.
+We want 2 outputs:
+idle
+hit
+And 2 inputs:
+HP
+MP
+__________________________________________________________________________________________________________
+
+Nov 4 (Experiment 2): Success
+we now have 3 "action" outputs:
+idle
+hit
+cure
+
+Fitness is changed to "add a point for every unit of damage done".
+
+Want to see 2 things:
+	-If mobs can learn NOT to try and cure when MP is 0
+	-If mobs can learn to hit until HP is low, then cure, to maximize dmg done before they are killed, thus maximize fitness
+
+__________________________________________________________________________________________________________
+
+Below are tentative ideas:
+Nov 11 (Experiment 3)
+Add "fire" spell as an output, making 4 outputs:
+idle
+hit
+cure
+fire
+
+Fire spell will take away from MP similar to cure, but will do more damage than "hit". 
+
+Want to see:
+	-Interesting decisions will come out of this as a mob now needs to decide if they should use fire spell instead of cure, should only hit/cure, etc.
+
+____________________________________________________________________________________________________________
+Nov 18 (Experiment 4)
+Add "poison" spell that dots opponent mob, so we have 5 outputs:
+idle
+hit
+cure
+fire
+poison
+
+poison spell takes away from MP.
+
+Want to see:
+	-If mob will learn to use this once (if ever) at beginning of the fight
+
+_______________________________________________________________________________________________________________
+Nov 25 (Experiment 5)
+Add "crit" as an output, making 6 outputs:
+idle
+hit
+cure
+fire
+poison
+crit
+
+Crit takes away from HP, but does much more damage than "hit"
+
+Want to see:
+	-Possibly mobs will use this in conjunction with cure?
+________________________________________________________________________________________________________________
+
+Dec 2 (Code Cleanup/Data Collection/Paper)
+1 Possibility: Pit 2 random brains against each other with massive HP, see what they learn to do.
+:Standard gameplay (player vs mobs in game)
+:Turn on/off inputs/outputs above to get results
+:Basic stupid classes arise - only allow spells with low HP but massive MP, only allow physical attacks with massive HP, no MP, etc.
+
+Dec 9 (Data Collection/Paper)
+
+
+
+-Basically what happens is the mobs learn to do the maximum amount of damage possible given any arbitrary configuration of skills above. For instance, they will learn to poison if it will do more damage in the long run than losing a cure . They only action that was not learned that we wanted was the ability to see that their MP is 0, HP is 1, then Crit instead of just hit. The problem with this however is that if we put crit up high enough damage to get decent fitness, the mobs would learn to just crit and cure each time. It seems that the fitness that would be given to a mob that learned to crit at the last hit before dying was negligible so that they never learned it.

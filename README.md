@@ -2,9 +2,56 @@
 
 An AI-powered text-based dungeon crawler where Claude-controlled agents cooperate to descend through the Durnhollow fortress, battle monsters, and close the Shadowfell Rift.
 
+## Background: From Neuroevolution to Large Language Models
+
+NachoMUD is the modern successor to **KinchoMUD** (2007-2009), an undergraduate research project at the University of Texas at Austin that explored whether AI agents could learn combat tactics in a MUD (Multi-User Dungeon) through neuroevolution.
+
+### The Original Research: KinchoMUD & rtNEAT
+
+KinchoMUD was a C++ MUD SDK built as a research platform for applying **rtNEAT** (real-time NeuroEvolution of Augmenting Topologies) to game AI. The project, conducted under UT Austin's Neural Networks research program, asked a series of progressively harder questions about emergent agent behavior:
+
+- **Can agents learn that attacking is better than idling?** Neural networks with HP and MP as inputs evolved to choose between actions like *hit*, *cure*, *fire*, *poison*, and *crit* -- each with different damage, MP costs, and tradeoffs.
+- **Can agents learn resource management?** Mobs successfully evolved to avoid casting cure when MP was zero, and to heal only when HP was critically low to maximize total damage output before death.
+- **Can emergent "classes" form?** By constraining stat configurations (high HP/no MP, low HP/high MP), distinct combat roles naturally arose through evolution -- physical fighters, mage-types, and hybrids.
+- **Can agents cooperate in parties?** The research designed a "party brain" architecture where individual mob brains could consult a shared party brain for recommended actions, then decide whether to follow or ignore the advice. Sub-brains for battle, movement, and party coordination gave each mob a modular decision architecture.
+- **Can agents learn to lead and teach?** A 2007 proposal explored whether rtNEAT agents could be assigned military-style ranks and learn to advise subordinates, extending human-to-agent training research into agent-to-agent knowledge transfer.
+
+The experiments showed that neuroevolution could produce agents that maximized damage given arbitrary skill configurations, learned when to use poison vs. cure, and developed rudimentary tactical behavior. However, the approach hit fundamental limits: agents couldn't generalize to novel situations, had no concept of narrative or communication, and the fitness functions needed careful hand-tuning for each new behavior.
+
+This research culminated in two undergraduate honors theses at UT Austin's AI Lab:
+- [Christopher Bush, "KinchoMUD: Applying rtNEAT to a Multi-User Dungeon" (2010)](https://www.cs.utexas.edu/~ai-lab/?bush:ugthesis10)
+- [Matthew Johnston, "KinchoMUD: Applying rtNEAT to a Multi-User Dungeon" (2010)](https://www.cs.utexas.edu/~ai-lab/?johnston:ugthesis10)
+
+### The Legacy Codebase
+
+The original project lives in the `neatMUD/` directory:
+
+- **`neatMUD/kinchoMUD/`** -- The C++ MUD SDK with rooms, mobs, battles, stats, and a `MobBrain` class wired to rtNEAT neural network populations for real-time mob decision-making
+- **`neatMUD/rtNEAT/`** -- Kenneth Stanley's rtNEAT library (C++) for evolving neural network topologies in real time
+- **`neatMUD/kinchoMUD/docs/Research/`** -- Original research reports and proposals from 2007-2009
+
+### NachoMUD: The Next Iteration
+
+NachoMUD revisits the same core questions -- *can AI agents make strategic combat decisions, cooperate in parties, and behave with distinct personalities?* -- but replaces neuroevolution with large language models.
+
+Where KinchoMUD needed thousands of generations to evolve a neural network that could learn "heal when HP is low," NachoMUD's Claude-powered agents understand that concept from their first turn. The shift from rtNEAT to LLMs transforms what's possible:
+
+| | KinchoMUD (2007-2009) | NachoMUD (2025) |
+|---|---|---|
+| **AI Architecture** | rtNEAT neural networks | Claude (LLM) |
+| **Decision Making** | Evolved fitness functions | Natural language reasoning |
+| **Learning** | Generational evolution over thousands of episodes | In-context via persistent memory |
+| **Communication** | None (isolated brains) | Natural language dialogue between agents |
+| **Personality** | Emergent from network weights | Defined character traits influencing decisions |
+| **Narration** | Static text strings | Dynamic AI-generated storytelling |
+| **Party Coordination** | Proposed "party brain" architecture | Agents speak, strategize, and coordinate naturally |
+| **Language** | C++ | Python |
+
+The original research dreamed of agents that could talk to each other, form strategies, and develop distinct roles. Fifteen years and a paradigm shift in AI later, NachoMUD makes that a reality.
+
 ## Overview
 
-NachoMUD is a collaborative AI dungeon simulation that showcases multi-agent reasoning and strategic cooperation. Three AI-controlled adventurers—each with distinct personalities and combat roles—must work together to survive encounters with progressively dangerous monsters and ultimately defeat the final boss.
+NachoMUD is a collaborative AI dungeon simulation that showcases multi-agent reasoning and strategic cooperation. Three AI-controlled adventurers -- each with distinct personalities and combat roles -- must work together to survive encounters with progressively dangerous monsters and ultimately defeat the final boss.
 
 The game uses **Claude Sonnet 4** to power real-time decision-making for all agents, including combat actions, dialogue, and tactical coordination. The narrator also uses Claude to generate dynamic, story-driven descriptions of events.
 
@@ -30,12 +77,18 @@ nachomud/
 ├── models.py         # Data structures (Agent, Room, Mob, etc.)
 ├── config.py         # Configuration and templates
 ├── requirements.txt  # Python dependencies
-└── data/
-    ├── world.json    # Dungeon layout and encounters
-    └── memories/     # Per-agent memory storage
-        ├── finn.json
-        ├── kael.json
-        └── lyria.json
+├── data/
+│   ├── world.json    # Dungeon layout and encounters
+│   └── memories/     # Per-agent memory storage
+│       ├── finn.json
+│       ├── kael.json
+│       └── lyria.json
+└── neatMUD/              # Legacy research codebase (2007-2009)
+    ├── kinchoMUD/        # Original C++ MUD SDK with rtNEAT integration
+    │   ├── src/          # Battle, Mob, MobBrain, Chain, Room, etc.
+    │   ├── data/         # XML world definitions
+    │   └── docs/         # Research reports and proposals
+    └── rtNEAT/           # Kenneth Stanley's rtNEAT neuroevolution library
 ```
 
 ## Installation
@@ -133,11 +186,3 @@ Agent memories are stored in `data/memories/` for persistence between decisions.
 ## License
 
 [Add your license here]
-
-## Notes
-
-This project demonstrates:
-- Multi-agent AI coordination
-- Complex prompt engineering for behavioral control
-- Real-time decision-making in a dynamic environment
-- Integration of AI-generated narrative with game logic

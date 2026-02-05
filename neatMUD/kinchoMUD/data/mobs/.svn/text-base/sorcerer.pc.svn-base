@@ -1,0 +1,17 @@
+<mob mfd="8">
+	<fname>Sorcerer</fname>
+	<stat sd="0" name="lvl" current="7" xpinitial="100"/>
+	<stat sd="1" name="hp" initial="25" growth="10"/>
+	<stat sd="2" name="mp" initial="25" growth="10"/>
+	<stat sd="3" name="str" initial="4" growth="2"/>
+	<stat sd="4" name="dex" initial="7" growth="3.5"/>
+	<stat sd="5" name="vit" initial="3" growth="1.5"/>
+	<stat sd="6" name="int" initial="6" growth="3"/>
+	<stat sd="7" name="wil" initial="5" growth="2.5"/>
+	<stat sd="8" name="spd" initial="27" growth="0"/>
+	<stat sd="9" name="turn" initial="100"/>
+	<action actid="15"/>
+	<action actid="22"/>
+	<action actid="26"/>
+	<action actid="28"/>
+</mob>
