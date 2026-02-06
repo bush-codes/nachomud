@@ -14,10 +14,12 @@ sys.path.insert(0, PROJECT_ROOT)
 # Game engine reads world.json relative to cwd
 os.chdir(PROJECT_ROOT)
 
+from typing import Generator
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from agent import get_agent_action, parse_action
 from combat import resolve_attack, resolve_fireball, resolve_heal, resolve_missile, resolve_poison, tick_poison
@@ -254,22 +256,17 @@ def all_agents_dead(agents: list[AgentState]) -> bool:
     return all(not a.alive for a in agents)
 
 
-# ── Simulation runner ──────────────────────────────────────────────────
+# ── Simulation runner (streaming) ──────────────────────────────────────
 
-def run_simulation() -> dict:
-    """Run a full game simulation and return structured tick-by-tick data."""
+def simulation_stream() -> Generator[str, None, None]:
+    """Sync generator that yields newline-delimited JSON: init, tick*, done."""
     rooms = build_world()
-
-    # Describe starting room
     describe_room(rooms["room_1"])
-
     agents = create_agents()
     log.info("Simulation started: %d agents, %d max ticks", len(agents), MAX_TICKS)
 
-    # Build static world info for response
-    world_info = {
-        "rooms": []
-    }
+    # Build static world + agents info
+    world_info = {"rooms": []}
     for room_id in sorted(rooms.keys()):
         room = rooms[room_id]
         world_info["rooms"].append({
@@ -289,8 +286,10 @@ def run_simulation() -> dict:
         for a in agents
     ]
 
-    ticks_data = []
+    yield json.dumps({"type": "init", "world": world_info, "agents": agents_info}) + "\n"
+
     outcome = "timeout"
+    total_ticks = 0
 
     for tick in range(1, MAX_TICKS + 1):
         tick_events = []
@@ -333,20 +332,21 @@ def run_simulation() -> dict:
                 if summary:
                     append_memory(agent.name, tick, summary)
 
-        # Snapshot state after this tick
+        # Snapshot state
         agent_states = [agent_state_snapshot(a) for a in agents]
         room_states = {}
         for rid, r in rooms.items():
-            # Only include rooms that have mobs or items (to keep payload small)
             if r.mobs or r.items:
                 room_states[rid] = room_state_snapshot(r)
 
-        ticks_data.append({
+        total_ticks = tick
+        yield json.dumps({
+            "type": "tick",
             "tick": tick,
             "events": [event_to_dict(e) for e in tick_events],
             "agent_states": agent_states,
             "room_states": room_states,
-        })
+        }) + "\n"
 
         if check_boss_defeated(rooms):
             outcome = "victory"
@@ -356,29 +356,22 @@ def run_simulation() -> dict:
             outcome = "defeat"
             break
 
-    log.info("Simulation complete: %s in %d ticks", outcome, len(ticks_data))
-    return {
-        "outcome": outcome,
-        "total_ticks": len(ticks_data),
-        "world": world_info,
-        "agents": agents_info,
-        "ticks": ticks_data,
-    }
+    log.info("Simulation complete: %s in %d ticks", outcome, total_ticks)
+    yield json.dumps({"type": "done", "outcome": outcome, "total_ticks": total_ticks}) + "\n"
 
 
 # ── API Endpoints ──────────────────────────────────────────────────────
 
 @app.post("/api/simulate")
 async def simulate():
-    """Run a full simulation and return the results."""
+    """Stream a simulation as newline-delimited JSON."""
     if not ANTHROPIC_API_KEY:
         raise HTTPException(
             status_code=500,
             detail="ANTHROPIC_API_KEY environment variable is not set. "
                    "Export it before starting the server: export ANTHROPIC_API_KEY=sk-...",
         )
-    result = await asyncio.to_thread(run_simulation)
-    return result
+    return StreamingResponse(simulation_stream(), media_type="application/x-ndjson")
 
 
 @app.get("/api/world")

@@ -35,7 +35,7 @@ export default function EventLog({ events, currentTick }: EventLogProps) {
   }, [events]);
 
   return (
-    <div className="bg-gray-900 rounded-lg border border-gray-800 p-3 h-48 overflow-y-auto">
+    <div className="bg-gray-900 rounded-lg border border-gray-800 p-3 h-full overflow-y-auto">
       <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
         Tick {currentTick} Events
       </div>

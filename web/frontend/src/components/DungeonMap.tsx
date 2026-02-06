@@ -93,8 +93,8 @@ export default function DungeonMap({ rooms, agentStates, roomStates }: DungeonMa
   }
 
   return (
-    <div className="flex-1 overflow-auto bg-gray-950 rounded-lg border border-gray-800 p-4">
-      <svg viewBox="-10 -180 450 780" className="w-full h-full" style={{ minHeight: 400 }}>
+    <div className="h-full overflow-hidden bg-gray-950 rounded-lg border border-gray-800 p-2">
+      <svg viewBox="-10 -180 450 780" className="w-full h-full">
         <defs>
           <filter id="glow">
             <feGaussianBlur stdDeviation="3" result="coloredBlur" />
