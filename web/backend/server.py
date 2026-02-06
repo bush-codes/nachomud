@@ -23,7 +23,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 from agent import get_agent_action, parse_action
 from combat import resolve_attack, resolve_fireball, resolve_heal, resolve_missile, resolve_poison, tick_poison
-from config import AGENT_TEMPLATES, ANTHROPIC_API_KEY, MAX_TICKS
+from config import AGENT_TEMPLATES, ANTHROPIC_API_KEY, LLM_BACKEND, MAX_TICKS
 from memory import append_memory, build_narrative_memory, clear_memories
 from models import AgentState, GameEvent, Item, Room
 from world import build_world, describe_room, get_room_state
@@ -365,7 +365,7 @@ def simulation_stream() -> Generator[str, None, None]:
 @app.post("/api/simulate")
 async def simulate():
     """Stream a simulation as newline-delimited JSON."""
-    if not ANTHROPIC_API_KEY:
+    if LLM_BACKEND != "ollama" and not ANTHROPIC_API_KEY:
         raise HTTPException(
             status_code=500,
             detail="ANTHROPIC_API_KEY environment variable is not set. "

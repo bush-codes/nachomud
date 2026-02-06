@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import anthropic
-
-from config import AGENT_MODEL, ANTHROPIC_API_KEY, SPELL_COSTS
+from config import AGENT_MODEL, SPELL_COSTS
+from llm import chat
 from memory import format_memories_for_prompt
 from models import AgentState
-
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 COMMANDS_HELP = """Commands:
   n / s / e / w       - Move in a direction
@@ -57,14 +54,12 @@ What do you do? Respond with exactly one command."""
 def get_agent_action(agent: AgentState, room_state: str) -> str:
     prompt = build_agent_prompt(agent, room_state)
 
-    response = client.messages.create(
+    raw = chat(
+        system=f"You are {agent.name} the {agent.agent_class} in a dungeon crawler. Output a single game command, nothing else.",
+        message=prompt,
         model=AGENT_MODEL,
         max_tokens=50,
-        system=f"You are {agent.name} the {agent.agent_class} in a dungeon crawler. Output a single game command, nothing else.",
-        messages=[{"role": "user", "content": prompt}],
     )
-
-    raw = response.content[0].text.strip()
     # Take only the first line in case the LLM adds explanation
     action = raw.split("\n")[0].strip()
     # Remove any leading slash or punctuation

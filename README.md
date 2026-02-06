@@ -110,12 +110,14 @@ The game uses **Claude Sonnet 4** to power real-time decision-making for all age
 nachomud/
 ├── main.py           # Game loop and orchestration
 ├── agent.py          # Agent decision-making and action parsing
+├── llm.py            # LLM abstraction (Anthropic / Ollama)
 ├── combat.py         # Combat resolution system
 ├── world.py          # World and room management
 ├── memory.py         # Agent memory and narrative construction
-├── narrator.py       # Claude-powered story narration
+├── narrator.py       # LLM-powered story narration
 ├── models.py         # Data structures (Agent, Room, Mob, etc.)
 ├── config.py         # Configuration and templates
+├── run.sh            # Launch script (Ollama + server)
 ├── requirements.txt  # Python dependencies
 ├── data/
 │   ├── world.json    # Dungeon layout and encounters
@@ -156,19 +158,82 @@ cd nachomud
 pip install -r requirements.txt
 ```
 
-3. Set up your Anthropic API key:
+3. Set up your LLM backend (choose one):
+
+**Option A: Anthropic API (Claude)**
 ```bash
 export ANTHROPIC_API_KEY="your-api-key-here"
 ```
 
+**Option B: Local LLM with Ollama (free, no API key needed)**
+```bash
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull a model
+ollama pull qwen2.5:7b
+
+# Set the backend
+export LLM_BACKEND=ollama
+```
+
 ## Usage
 
-Run the game:
+### Quick Start with `run.sh`
+
+The easiest way to run NachoMUD is with the launch script, which handles starting Ollama (if needed) and the web server:
+
+```bash
+./run.sh
+```
+
+By default `run.sh` uses the Ollama backend. To use Claude instead:
+
+```bash
+LLM_BACKEND=anthropic ./run.sh
+```
+
+### Running Manually
+
+**CLI mode:**
 ```bash
 python main.py
 ```
 
 The simulation will run for up to 50 ticks (turns), with each agent deciding their action and the narrator describing the results. Watch as the AI-controlled party descends through the fortress!
+
+### Local LLM (Ollama)
+
+NachoMUD can run entirely locally using [Ollama](https://ollama.com) instead of the Anthropic API. This is free, requires no API key, and keeps all inference on your machine.
+
+**Setup:**
+```bash
+# Install Ollama (Linux/macOS)
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull the default model (~4GB)
+ollama pull qwen2.5:7b
+
+# Run with Ollama
+LLM_BACKEND=ollama python main.py
+```
+
+**Recommended models:**
+
+| Model | Size | Notes |
+|---|---|---|
+| `qwen2.5:7b` (default) | ~4GB VRAM | Good instruction following, handles structured output well |
+| `llama3.2:3b` | ~2GB VRAM | Lighter alternative for low-resource machines |
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `LLM_BACKEND` | `anthropic` | LLM backend: `anthropic` or `ollama` |
+| `AGENT_MODEL` | Backend-dependent | Model for agent decisions |
+| `NARRATOR_MODEL` | Backend-dependent | Model for narration and world generation |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL (for remote Ollama instances) |
+| `ANTHROPIC_API_KEY` | *(empty)* | Anthropic API key (required for `anthropic` backend) |
 
 ### Web Visualization
 
@@ -188,15 +253,21 @@ npm install
 npm run build
 ```
 
-**3. Start the server** (requires `ANTHROPIC_API_KEY` in your environment):
+**3. Start the server:**
 
 ```bash
+# With Ollama (no API key needed):
+LLM_BACKEND=ollama cd web/backend && uvicorn server:app --port 4000
+
+# Or with Claude:
 export ANTHROPIC_API_KEY="your-api-key-here"
-cd web/backend
-uvicorn server:app --port 4000
+cd web/backend && uvicorn server:app --port 4000
+
+# Or just use run.sh:
+./run.sh
 ```
 
-Open `http://localhost:4000` and click **Run Simulation**. The simulation makes Claude API calls for each agent turn, so it takes a few minutes to complete.
+Open `http://localhost:4000` and click **Run Simulation**.
 
 For frontend development with hot reload, run the Vite dev server in a separate terminal:
 
@@ -265,9 +336,10 @@ Agent memories are stored in `data/memories/` for persistence between decisions.
 
 ## Technology
 
-- **Claude AI**: Powers all agent decisions and narration
+- **Claude AI or Ollama**: Powers all agent decisions and narration (configurable via `LLM_BACKEND`)
 - **Python 3.10+**: Core language
 - **Anthropic SDK**: Integration with Claude API
+- **Ollama**: Local LLM inference (optional)
 - **FastAPI + Uvicorn**: Web visualization backend
 - **React + TypeScript + Tailwind CSS**: Web visualization frontend (Vite build)
 
@@ -275,9 +347,10 @@ Agent memories are stored in `data/memories/` for persistence between decisions.
 
 - Python 3.10 or higher
 - `anthropic>=0.40.0`
+- `ollama>=0.4.0` (for local LLM backend)
 - `fastapi>=0.110.0`, `uvicorn>=0.27.0` (for web visualization)
 - Node.js 18+ and npm (for building the frontend)
-- Valid Anthropic API key
+- Valid Anthropic API key **or** Ollama installed locally
 
 ## License
 

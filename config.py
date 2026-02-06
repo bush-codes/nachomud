@@ -2,8 +2,15 @@ import os
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
-NARRATOR_MODEL = "claude-sonnet-4-20250514"
-AGENT_MODEL = "claude-sonnet-4-20250514"
+LLM_BACKEND = os.environ.get("LLM_BACKEND", "ollama")  # "anthropic" or "ollama"
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+
+if LLM_BACKEND == "ollama":
+    AGENT_MODEL = os.environ.get("AGENT_MODEL", "qwen2.5:7b")
+    NARRATOR_MODEL = os.environ.get("NARRATOR_MODEL", "qwen2.5:7b")
+else:
+    AGENT_MODEL = os.environ.get("AGENT_MODEL", "claude-sonnet-4-20250514")
+    NARRATOR_MODEL = os.environ.get("NARRATOR_MODEL", "claude-sonnet-4-20250514")
 
 MAX_TICKS = 50
 NUM_AGENTS = 3

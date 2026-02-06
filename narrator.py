@@ -2,12 +2,9 @@ from __future__ import annotations
 
 import json
 
-import anthropic
-
-from config import ANTHROPIC_API_KEY, NARRATOR_MODEL
+from config import NARRATOR_MODEL
+from llm import chat
 from models import Room
-
-client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 SYSTEM_PROMPT = """You are the narrator of Aeldrath, a high-fantasy world where a Shadowfell Rift has torn open beneath the ancient fortress of Durnhollow. Dark creatures pour from the rift, corrupting the land. Three heroes have been summoned to descend into the fortress, fight through its depths, and close the rift before it consumes the realm.
 
@@ -15,43 +12,31 @@ Your tone is atmospheric, vivid, and concise. Describe environments with sensory
 
 
 def generate_room_description(room_name: str, room_context: str) -> str:
-    response = client.messages.create(
+    return chat(
+        system=SYSTEM_PROMPT,
+        message=f"Write a 2-3 sentence atmospheric description for a dungeon room called '{room_name}'. Context: {room_context}. Be vivid and concise.",
         model=NARRATOR_MODEL,
         max_tokens=200,
-        system=SYSTEM_PROMPT,
-        messages=[{
-            "role": "user",
-            "content": f"Write a 2-3 sentence atmospheric description for a dungeon room called '{room_name}'. Context: {room_context}. Be vivid and concise."
-        }],
     )
-    return response.content[0].text.strip()
 
 
 def narrate_combat(agent_name: str, action: str, result: str) -> str:
-    response = client.messages.create(
+    return chat(
+        system=SYSTEM_PROMPT,
+        message=f"Write a brief, dramatic one-sentence narration for this combat event:\nAgent: {agent_name}\nAction: {action}\nResult: {result}",
         model=NARRATOR_MODEL,
         max_tokens=150,
-        system=SYSTEM_PROMPT,
-        messages=[{
-            "role": "user",
-            "content": f"Write a brief, dramatic one-sentence narration for this combat event:\nAgent: {agent_name}\nAction: {action}\nResult: {result}"
-        }],
     )
-    return response.content[0].text.strip()
 
 
 def narrate_npc_dialogue(npc_name: str, npc_title: str, dialogue_hints: list[str], agent_name: str) -> str:
     hints = "; ".join(dialogue_hints) if dialogue_hints else "mysterious, cryptic"
-    response = client.messages.create(
+    return chat(
+        system=SYSTEM_PROMPT,
+        message=f"{agent_name} speaks with {npc_name} the {npc_title}. Dialogue themes: {hints}. Write 1-2 sentences of what {npc_name} says in-character. Use quotes.",
         model=NARRATOR_MODEL,
         max_tokens=150,
-        system=SYSTEM_PROMPT,
-        messages=[{
-            "role": "user",
-            "content": f"{agent_name} speaks with {npc_name} the {npc_title}. Dialogue themes: {hints}. Write 1-2 sentences of what {npc_name} says in-character. Use quotes."
-        }],
     )
-    return response.content[0].text.strip()
 
 
 def generate_world_json() -> dict:
@@ -83,13 +68,12 @@ Return ONLY valid JSON with this structure:
   ]
 }"""
 
-    response = client.messages.create(
+    text = chat(
+        system="You are a game designer. Output ONLY valid JSON, no markdown, no explanation.",
+        message=prompt,
         model=NARRATOR_MODEL,
         max_tokens=4096,
-        system="You are a game designer. Output ONLY valid JSON, no markdown, no explanation.",
-        messages=[{"role": "user", "content": prompt}],
     )
-    text = response.content[0].text.strip()
     # Strip markdown code fences if present
     if text.startswith("```"):
         lines = text.split("\n")

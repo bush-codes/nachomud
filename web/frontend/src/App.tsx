@@ -180,7 +180,7 @@ export default function App() {
   const rooms = simulation?.world.rooms ?? worldRooms;
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       <GameHeader
         outcome={loading ? null : simulation?.outcome ?? null}
         totalTicks={simulation?.total_ticks ?? 0}
@@ -190,23 +190,23 @@ export default function App() {
       />
 
       {error && (
-        <div className="mx-4 mt-2 px-4 py-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">
+        <div className="mx-2 sm:mx-4 mt-2 px-3 sm:px-4 py-2 sm:py-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">
           {error}
         </div>
       )}
 
-      {/* Main content: Map (left) | Event Log (right) */}
-      <div className="flex-1 flex gap-4 p-4 overflow-hidden min-h-0">
-        <div className="w-1/2 shrink-0 h-full">
+      {/* Main content: Map (top/left) | Event Log (bottom/right) */}
+      <div className="flex-1 flex flex-col md:flex-row gap-2 sm:gap-4 p-2 sm:p-4 overflow-hidden min-h-0">
+        <div className="w-full md:w-1/2 shrink-0 h-1/2 md:h-full min-h-0">
           <DungeonMap rooms={rooms} agentStates={agentStates} roomStates={roomStates} />
         </div>
-        <div className="w-1/2 h-full min-h-0">
+        <div className="w-full md:w-1/2 h-1/2 md:h-full min-h-0">
           <EventLog events={events} currentTick={currentTick} />
         </div>
       </div>
 
       {/* Tick controls */}
-      <div className="px-4 pb-2">
+      <div className="px-2 sm:px-4 pb-2">
         <TickControls
           currentTick={currentTick}
           totalTicks={simulation?.total_ticks ?? 0}
@@ -219,7 +219,7 @@ export default function App() {
       </div>
 
       {/* Agent panels (horizontal bottom row) */}
-      <div className="px-4 pb-4">
+      <div className="px-2 sm:px-4 pb-2 sm:pb-4 overflow-x-auto">
         {agentStates.length > 0 && <AgentPanel agents={agentStates} rooms={rooms} />}
       </div>
     </div>

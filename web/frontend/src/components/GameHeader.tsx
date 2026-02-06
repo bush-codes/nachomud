@@ -32,17 +32,17 @@ export default function GameHeader({ outcome, totalTicks, currentTick, loading, 
   }
 
   return (
-    <header className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-800">
-      <div className="flex items-center gap-4">
-        <h1 className="text-xl font-bold tracking-wide text-gray-100">
+    <header className="flex flex-wrap items-center justify-between gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-gray-900 border-b border-gray-800">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+        <h1 className="text-base sm:text-xl font-bold tracking-wide text-gray-100">
           <span className="text-amber-400">Nacho</span>MUD
-          <span className="text-sm font-normal text-gray-500 ml-2">Simulation Viewer</span>
+          <span className="hidden sm:inline text-sm font-normal text-gray-500 ml-2">Simulation Viewer</span>
         </h1>
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${badgeStyle}`}>
+        <span className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${badgeStyle}`}>
           {status}
         </span>
         {outcome && (
-          <span className="text-sm text-gray-500">
+          <span className="text-xs sm:text-sm text-gray-500">
             Tick {currentTick} / {totalTicks}
           </span>
         )}
@@ -50,7 +50,7 @@ export default function GameHeader({ outcome, totalTicks, currentTick, loading, 
       <button
         onClick={onRunSimulation}
         disabled={loading}
-        className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-semibold rounded transition-colors"
+        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-xs sm:text-sm font-semibold rounded transition-colors"
       >
         {loading ? (
           <span className="flex items-center gap-2">
