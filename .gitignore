@@ -13,14 +13,19 @@ web/frontend/dist/
 # C++ build artifacts
 *.o
 *.a
+*.d
 *.so
 *.dylib
 neatMUD/kinchoMUD/kinchoMUD
 neatMUD/kinchoMUD/Debug/
+neatMUD/rtNEAT/Debug/
 
 # IDE / editor
 .vscode/
 .idea/
+.cproject
+.project
+.metadata
 *.swp
 *.swo
 *~
