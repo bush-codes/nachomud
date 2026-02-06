@@ -123,6 +123,18 @@ nachomud/
 │       ├── finn.json
 │       ├── kael.json
 │       └── lyria.json
+├── web/                  # Web visualization
+│   ├── backend/
+│   │   └── server.py     # FastAPI server wrapping the game engine
+│   └── frontend/         # React + TypeScript + Tailwind UI
+│       └── src/
+│           ├── App.tsx
+│           └── components/
+│               ├── DungeonMap.tsx    # SVG room graph with agent positions
+│               ├── AgentPanel.tsx    # HP/MP bars, equipment, status
+│               ├── EventLog.tsx      # Color-coded event feed
+│               ├── TickControls.tsx  # Playback controls and tick slider
+│               └── GameHeader.tsx    # Title, status, run button
 └── neatMUD/              # Legacy research codebase (2007-2009)
     ├── kinchoMUD/        # Original C++ MUD SDK with rtNEAT integration
     │   ├── src/          # Battle, Mob, MobBrain, Chain, Room, etc.
@@ -157,6 +169,45 @@ python main.py
 ```
 
 The simulation will run for up to 50 ticks (turns), with each agent deciding their action and the narrator describing the results. Watch as the AI-controlled party descends through the fortress!
+
+### Web Visualization
+
+NachoMUD includes a web-based simulation viewer that lets you run simulations and replay them tick-by-tick with an interactive dungeon map, agent stat panels, and a color-coded event log.
+
+**1. Install backend dependencies:**
+
+```bash
+pip install fastapi uvicorn
+```
+
+**2. Build the frontend:**
+
+```bash
+cd web/frontend
+npm install
+npm run build
+```
+
+**3. Start the server:**
+
+```bash
+cd web/backend
+uvicorn server:app --port 4000
+```
+
+Open `http://localhost:4000` and click **Run Simulation**.
+
+For frontend development with hot reload, run the Vite dev server in a separate terminal:
+
+```bash
+# Terminal 1
+cd web/backend && uvicorn server:app --port 4000
+
+# Terminal 2
+cd web/frontend && npm run dev
+```
+
+The Vite dev server proxies API requests to the backend automatically.
 
 ## Game Mechanics
 
@@ -216,11 +267,15 @@ Agent memories are stored in `data/memories/` for persistence between decisions.
 - **Claude AI**: Powers all agent decisions and narration
 - **Python 3.10+**: Core language
 - **Anthropic SDK**: Integration with Claude API
+- **FastAPI + Uvicorn**: Web visualization backend
+- **React + TypeScript + Tailwind CSS**: Web visualization frontend (Vite build)
 
 ## Requirements
 
 - Python 3.10 or higher
 - `anthropic>=0.40.0`
+- `fastapi>=0.110.0`, `uvicorn>=0.27.0` (for web visualization)
+- Node.js 18+ and npm (for building the frontend)
 - Valid Anthropic API key
 
 ## License

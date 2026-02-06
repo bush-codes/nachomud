@@ -1,4 +1,34 @@
-__pycache__
-.venv
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.venv/
+venv/
 
+# Node
+node_modules/
+web/frontend/dist/
+
+# C++ build artifacts
+*.o
+*.a
+*.so
+*.dylib
 neatMUD/kinchoMUD/kinchoMUD
+neatMUD/kinchoMUD/Debug/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.*
+
+# Agent memory (regenerated each run)
+data/memories/*.json
