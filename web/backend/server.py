@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import copy
+import asyncio
 import json
+import logging
 import os
 import sys
 
@@ -13,17 +14,20 @@ sys.path.insert(0, PROJECT_ROOT)
 # Game engine reads world.json relative to cwd
 os.chdir(PROJECT_ROOT)
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from agent import get_agent_action, parse_action
 from combat import resolve_attack, resolve_fireball, resolve_heal, resolve_missile, resolve_poison, tick_poison
-from config import AGENT_TEMPLATES, MAX_TICKS
+from config import AGENT_TEMPLATES, ANTHROPIC_API_KEY, MAX_TICKS
 from memory import append_memory, build_narrative_memory, clear_memories
 from models import AgentState, GameEvent, Item, Room
 from world import build_world, describe_room, get_room_state
+
+log = logging.getLogger("nachomud")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
 DIRECTION_NAMES = {"n": "north", "s": "south", "e": "east", "w": "west"}
 
@@ -260,6 +264,7 @@ def run_simulation() -> dict:
     describe_room(rooms["room_1"])
 
     agents = create_agents()
+    log.info("Simulation started: %d agents, %d max ticks", len(agents), MAX_TICKS)
 
     # Build static world info for response
     world_info = {
@@ -300,10 +305,12 @@ def run_simulation() -> dict:
 
             try:
                 action_str = get_agent_action(agent, room_state)
-            except Exception:
+            except Exception as e:
+                log.error("Tick %d: %s agent API call failed: %s", tick, agent.name, e)
                 action_str = "look"
 
             cmd, arg = parse_action(action_str)
+            log.info("Tick %d: %s -> %s", tick, agent.name, action_str)
             events = resolve_action(agent, cmd, arg, rooms, agents, tick)
             tick_events.extend(events)
 
@@ -349,6 +356,7 @@ def run_simulation() -> dict:
             outcome = "defeat"
             break
 
+    log.info("Simulation complete: %s in %d ticks", outcome, len(ticks_data))
     return {
         "outcome": outcome,
         "total_ticks": len(ticks_data),
@@ -363,7 +371,13 @@ def run_simulation() -> dict:
 @app.post("/api/simulate")
 async def simulate():
     """Run a full simulation and return the results."""
-    result = run_simulation()
+    if not ANTHROPIC_API_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="ANTHROPIC_API_KEY environment variable is not set. "
+                   "Export it before starting the server: export ANTHROPIC_API_KEY=sk-...",
+        )
+    result = await asyncio.to_thread(run_simulation)
     return result
 
 

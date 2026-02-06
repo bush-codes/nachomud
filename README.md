@@ -188,14 +188,15 @@ npm install
 npm run build
 ```
 
-**3. Start the server:**
+**3. Start the server** (requires `ANTHROPIC_API_KEY` in your environment):
 
 ```bash
+export ANTHROPIC_API_KEY="your-api-key-here"
 cd web/backend
 uvicorn server:app --port 4000
 ```
 
-Open `http://localhost:4000` and click **Run Simulation**.
+Open `http://localhost:4000` and click **Run Simulation**. The simulation makes Claude API calls for each agent turn, so it takes a few minutes to complete.
 
 For frontend development with hot reload, run the Vite dev server in a separate terminal:
 

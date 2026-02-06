@@ -9,6 +9,7 @@ import TickControls from "./components/TickControls";
 export default function App() {
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [currentTick, setCurrentTick] = useState(1);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -18,12 +19,20 @@ export default function App() {
     setLoading(true);
     setPlaying(false);
     setSimulation(null);
+    setError(null);
     try {
       const res = await fetch("/api/simulate", { method: "POST" });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.detail || `Server error: ${res.status}`);
+      }
       const data: SimulationResult = await res.json();
       setSimulation(data);
       setCurrentTick(1);
+      setPlaying(true);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : "Simulation failed";
+      setError(msg);
       console.error("Simulation failed:", err);
     } finally {
       setLoading(false);
@@ -102,6 +111,12 @@ export default function App() {
         loading={loading}
         onRunSimulation={runSimulation}
       />
+
+      {error && (
+        <div className="mx-4 mt-2 px-4 py-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">
+          {error}
+        </div>
+      )}
 
       <div className="flex-1 flex gap-4 p-4 overflow-hidden">
         {/* Map */}
