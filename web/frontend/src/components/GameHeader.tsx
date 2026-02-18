@@ -6,6 +6,7 @@ interface GameHeaderProps {
   currentTick: number;
   loading: boolean;
   onRunSimulation: () => void;
+  onResetSimulation: () => void;
 }
 
 const BADGE_STYLES: Record<string, string> = {
@@ -16,7 +17,7 @@ const BADGE_STYLES: Record<string, string> = {
   idle: "bg-gray-700 text-gray-300",
 };
 
-export default function GameHeader({ outcome, totalTicks, currentTick, loading, onRunSimulation }: GameHeaderProps) {
+export default function GameHeader({ outcome, totalTicks, currentTick, loading, onRunSimulation, onResetSimulation }: GameHeaderProps) {
   let status: string;
   let badgeStyle: string;
 
@@ -47,23 +48,31 @@ export default function GameHeader({ outcome, totalTicks, currentTick, loading, 
           </span>
         )}
       </div>
-      <button
-        onClick={onRunSimulation}
-        disabled={loading}
-        className="px-3 sm:px-4 py-1.5 sm:py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-xs sm:text-sm font-semibold rounded transition-colors"
-      >
-        {loading ? (
-          <span className="flex items-center gap-2">
-            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-            Running...
-          </span>
-        ) : (
-          "Run Simulation"
-        )}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onResetSimulation}
+          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-700 hover:bg-red-600 text-white text-xs sm:text-sm font-semibold rounded transition-colors"
+        >
+          Reset
+        </button>
+        <button
+          onClick={onRunSimulation}
+          disabled={loading}
+          className="px-3 sm:px-4 py-1.5 sm:py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-gray-700 disabled:text-gray-500 text-white text-xs sm:text-sm font-semibold rounded transition-colors"
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              Running...
+            </span>
+          ) : (
+            "Run Simulation"
+          )}
+        </button>
+      </div>
     </header>
   );
 }

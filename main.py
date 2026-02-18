@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from agent import get_agent_action, parse_action
+from agent import get_agent_action, get_agent_discussion, parse_action
 from combat import (
     resolve_attack,
     resolve_fireball,
@@ -15,7 +15,7 @@ from config import AGENT_TEMPLATES, MAX_TICKS
 from memory import append_memory, build_narrative_memory, clear_memories
 from models import AgentState, GameEvent, Item, Room
 from narrator import narrate_combat, narrate_npc_dialogue
-from world import build_world, describe_room, get_room_state
+from world import build_sensory_context, build_world, describe_room
 
 DIRECTION_NAMES = {"n": "north", "s": "south", "e": "east", "w": "west"}
 
@@ -84,12 +84,6 @@ def resolve_action(
         else:
             events.append(GameEvent(tick, agent.name, f"move {cmd}",
                                     f"No exit to the {DIRECTION_NAMES.get(cmd, cmd)}.", agent.room_id))
-
-    elif cmd == "look":
-        desc = describe_room(room)
-        others = agents_in_room(agents, agent.room_id, agent.name)
-        state = get_room_state(room, others)
-        events.append(GameEvent(tick, agent.name, "look", state, agent.room_id))
 
     elif cmd == "attack":
         events.extend(resolve_attack(agent, room, arg, tick))
@@ -257,20 +251,61 @@ def main() -> None:
 
         all_tick_events: list[GameEvent] = []
 
+        # --- Discussion phase ---
+        # Group agents by room so they discuss with allies present
+        room_groups: dict[str, list[AgentState]] = {}
+        for agent in agents:
+            if agent.alive:
+                room_groups.setdefault(agent.room_id, []).append(agent)
+
+        # Each room has its own discussion
+        room_discussions: dict[str, list[str]] = {}
+        for room_id, room_agents in room_groups.items():
+            room = rooms[room_id]
+            others_map = {a.name: [o.name for o in room_agents if o.name != a.name] for a in room_agents}
+            all_names = [a.name for a in room_agents]
+            discussion: list[str] = []
+
+            for agent in room_agents:
+                sensory = build_sensory_context(room, all_names, rooms, agent.name)
+                try:
+                    utterance = get_agent_discussion(agent, sensory, others_map[agent.name], discussion)
+                except Exception as e:
+                    print(f"  [ERROR] {agent.name} discussion failed: {e}")
+                    utterance = "Let's keep moving."
+                discussion.append(f"{agent.name}: {utterance}")
+                print(f"[{agent.name}] Says: {utterance}")
+
+            room_discussions[room_id] = discussion
+            # Record discussion as say events
+            for agent in room_agents:
+                line = next((d for d in discussion if d.startswith(f"{agent.name}:")), None)
+                if line:
+                    msg = line.split(":", 1)[1].strip()
+                    all_tick_events.append(GameEvent(tick, agent.name, "say", f'{agent.name} says: "{msg}"', room_id))
+
+        print()
+
+        # --- Action phase (interleaved with results) ---
+        # Track actions per room so agents see what happened before them
+        room_actions: dict[str, list[str]] = {rid: [] for rid in room_discussions}
+
         for agent in agents:
             if not agent.alive:
                 continue
 
             room = rooms[agent.room_id]
             others = agents_in_room(agents, agent.room_id, agent.name)
-            room_state = get_room_state(room, others)
+            sensory = build_sensory_context(room, [agent.name] + others, rooms, agent.name)
+            discussion = room_discussions.get(agent.room_id, [])
+            actions_so_far = room_actions.get(agent.room_id, [])
 
             # Get action from LLM
             try:
-                action_str = get_agent_action(agent, room_state)
+                action_str = get_agent_action(agent, sensory, discussion, actions_so_far)
             except Exception as e:
                 print(f"  [ERROR] {agent.name} agent failed: {e}")
-                action_str = "look"
+                action_str = "say I'm not sure what to do."
 
             cmd, arg = parse_action(action_str)
             print(f"[{agent.name}] Action: {action_str}")
@@ -278,6 +313,10 @@ def main() -> None:
             # Resolve action
             events = resolve_action(agent, cmd, arg, rooms, agents, tick)
             all_tick_events.extend(events)
+
+            # Inject results into actions context for the next agent
+            for e in events:
+                room_actions.setdefault(agent.room_id, []).append(f"{e.agent}: {e.result.split(chr(10))[0]}")
 
             # Track last action for next turn's context
             agent.last_action = action_str

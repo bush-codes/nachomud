@@ -140,3 +140,67 @@ def get_room_state(room: Room, agent_names_here: list[str]) -> str:
         parts.append(f"Allies here: {', '.join(agent_names_here)}")
 
     return "\n".join(parts)
+
+
+def build_sensory_context(
+    room: Room,
+    agent_names_here: list[str],
+    rooms: dict[str, "Room"],
+    agent_name: str,
+) -> str:
+    """Build full sensory awareness: current room, adjacent rooms, allies."""
+    parts = [f"You are in: {room.name}"]
+    if room.description:
+        parts.append(room.description)
+
+    # Enemies in current room
+    living_mobs = [m for m in room.mobs if m.hp > 0]
+    if living_mobs:
+        mob_strs = [f"{m.name} (HP:{m.hp}/{m.max_hp}, ATK:{m.atk})" for m in living_mobs]
+        parts.append(f"Enemies here: {', '.join(mob_strs)}")
+    else:
+        parts.append("Enemies here: none")
+
+    # Items
+    if room.items:
+        item_strs = [i.name for i in room.items]
+        parts.append(f"Items on ground: {', '.join(item_strs)}")
+    else:
+        parts.append("Items on ground: none")
+
+    # NPCs
+    if room.npcs:
+        npc_strs = [f"{n.name} the {n.title}" for n in room.npcs]
+        parts.append(f"NPCs here: {', '.join(npc_strs)}")
+
+    # Allies
+    allies = [n for n in agent_names_here if n != agent_name]
+    if allies:
+        parts.append(f"Allies here: {', '.join(allies)}")
+    else:
+        parts.append("Allies here: none (you are alone)")
+
+    # Adjacent rooms
+    dir_names = {"n": "north", "s": "south", "e": "east", "w": "west"}
+    parts.append("")
+    parts.append("Nearby:")
+    for d in ("n", "s", "e", "w"):
+        if d in room.exits:
+            adj = rooms[room.exits[d]]
+            describe_room(adj)
+            adj_mobs = [m for m in adj.mobs if m.hp > 0]
+            adj_info = adj.name
+            details = []
+            if adj_mobs:
+                details.append(f"Enemies: {', '.join(m.name for m in adj_mobs)}")
+            if adj.npcs:
+                details.append(f"NPCs: {', '.join(n.name for n in adj.npcs)}")
+            if adj.items:
+                details.append(f"Items: {', '.join(i.name for i in adj.items)}")
+            if details:
+                adj_info += f" ({', '.join(details)})"
+            parts.append(f"  {dir_names[d]} ({d}): {adj_info}")
+        else:
+            parts.append(f"  {dir_names[d]}: no exit")
+
+    return "\n".join(parts)

@@ -97,12 +97,15 @@ The game uses **Claude Sonnet 4** to power real-time decision-making for all age
 
 ## Features
 
-- **AI-Driven Agents**: Three autonomous characters (Kael the Warrior, Finn the Rogue, Lyria the Mage) make strategic decisions using Claude
+- **AI-Driven Agents**: Three autonomous characters (Kael the Warrior, Lyria the Mage, Finn the Ranger) make strategic decisions using Claude or local LLMs via Ollama
+- **Discussion & Action Phases**: Each tick, agents discuss strategy in character before acting. Actions are interleaved so each agent sees the results of prior actions before deciding.
+- **Sensory Awareness**: Agents have implicit awareness of their surroundings, including adjacent rooms, eliminating the need for explicit "look" commands
 - **Real-Time Combat System**: Attack, magic spells (missile, fireball, poison), healing, and item management
-- **Procedural Narration**: Claude-generated story narration for combat and dialogue
+- **Procedural Narration**: LLM-generated story narration for combat and dialogue
 - **Persistent Memory**: Agents maintain memories of past events that influence future decisions
 - **Dynamic World**: Multi-room fortress with NPCs, loot, and escalating mob difficulty
 - **Cooperative Gameplay**: Agents must coordinate to survive encounters
+- **Web Visualization**: Real-time streaming UI with live events, dungeon map, agent panels, and simulation reset
 
 ## Project Structure
 
@@ -121,10 +124,11 @@ nachomud/
 ├── requirements.txt  # Python dependencies
 ├── data/
 │   ├── world.json    # Dungeon layout and encounters
-│   └── memories/     # Per-agent memory storage
-│       ├── finn.json
-│       ├── kael.json
-│       └── lyria.json
+│   ├── memories/     # Per-agent memory storage
+│   │   ├── finn.json
+│   │   ├── kael.json
+│   │   └── lyria.json
+│   └── logs/         # Simulation transcripts (auto-generated)
 ├── web/                  # Web visualization
 │   ├── backend/
 │   │   └── server.py     # FastAPI server wrapping the game engine
@@ -229,7 +233,7 @@ LLM_BACKEND=ollama python main.py
 
 | Variable | Default | Description |
 |---|---|---|
-| `LLM_BACKEND` | `anthropic` | LLM backend: `anthropic` or `ollama` |
+| `LLM_BACKEND` | `ollama` | LLM backend: `anthropic` or `ollama` |
 | `AGENT_MODEL` | Backend-dependent | Model for agent decisions |
 | `NARRATOR_MODEL` | Backend-dependent | Model for narration and world generation |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL (for remote Ollama instances) |
@@ -286,8 +290,8 @@ The Vite dev server proxies API requests to the backend automatically.
 ### Characters
 
 - **Kael** (Warrior): High HP, melee-focused, protective of allies
-- **Finn** (Rogue): Balanced stats, tactical approach, precise strikes
 - **Lyria** (Mage): Lower HP, magic-focused, support capabilities
+- **Finn** (Ranger): Balanced stats, scouts ahead, practical and observant
 
 ### Combat Actions
 
@@ -300,10 +304,11 @@ The Vite dev server proxies API requests to the backend automatically.
 ### Movement & Interaction
 
 - `n / s / e / w` - Move in cardinal directions
-- `look` - Examine current room
 - `get <item>` - Pick up loot (auto-equips if better)
 - `tell <name> <msg>` - Speak to an NPC or ally
 - `say <message>` - Speak to everyone in the room
+
+Agents have implicit sensory awareness of their current room and all adjacent rooms, so there is no `look` command -- they always know what's around them.
 
 ### Equipment
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { SimulationResult, AgentSnapshot, RoomInfo, TickData } from "./types";
+import { SimulationResult, AgentSnapshot, GameEventData, RoomInfo, TickData } from "./types";
 import GameHeader from "./components/GameHeader";
 import DungeonMap from "./components/DungeonMap";
 import AgentPanel from "./components/AgentPanel";
@@ -15,7 +15,10 @@ export default function App() {
   const [playing, setPlaying] = useState(false);
   const [liveFollow, setLiveFollow] = useState(true);
   const [speed, setSpeed] = useState(1);
+  const [liveEvents, setLiveEvents] = useState<GameEventData[]>([]);
+  const [liveTick, setLiveTick] = useState(0);
   const intervalRef = useRef<number | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Load the static world map on mount
   useEffect(() => {
@@ -25,7 +28,29 @@ export default function App() {
       .catch(() => {});
   }, []);
 
+  const resetSimulation = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+    setSimulation(null);
+    setLoading(false);
+    setPlaying(false);
+    setLiveFollow(true);
+    setCurrentTick(1);
+    setError(null);
+    setLiveEvents([]);
+    setLiveTick(0);
+  }, []);
+
   const runSimulation = useCallback(async () => {
+    // Abort any previous run
+    if (abortRef.current) {
+      abortRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setPlaying(false);
     setLiveFollow(true);
@@ -33,7 +58,7 @@ export default function App() {
     setError(null);
 
     try {
-      const res = await fetch("/api/simulate", { method: "POST" });
+      const res = await fetch("/api/simulate", { method: "POST", signal: controller.signal });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.detail || `Server error: ${res.status}`);
@@ -70,6 +95,9 @@ export default function App() {
               agents,
               ticks: [],
             });
+          } else if (msg.type === "event") {
+            setLiveTick(msg.tick);
+            setLiveEvents((prev) => [...prev, msg.event]);
           } else if (msg.type === "tick") {
             ticks.push({
               tick: msg.tick,
@@ -77,6 +105,8 @@ export default function App() {
               agent_states: msg.agent_states,
               room_states: msg.room_states,
             });
+            setLiveEvents([]);
+            setLiveTick(0);
             setSimulation({
               outcome: outcome ?? "timeout",
               total_ticks: ticks.length,
@@ -102,10 +132,15 @@ export default function App() {
         }
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        // User reset the simulation — not an error
+        return;
+      }
       const msg = err instanceof Error ? err.message : "Simulation failed";
       setError(msg);
       console.error("Simulation failed:", err);
     } finally {
+      abortRef.current = null;
       setLoading(false);
       setLiveFollow(false);
     }
@@ -176,7 +211,9 @@ export default function App() {
       : [];
 
   const roomStates = tickData?.room_states ?? {};
-  const events = tickData?.events ?? [];
+  // Show live events if we're following the stream and the current tick hasn't finalized yet
+  const isOnLiveTick = loading && liveFollow && liveTick > 0 && !tickData;
+  const events = isOnLiveTick ? liveEvents : (tickData?.events ?? []);
   const rooms = simulation?.world.rooms ?? worldRooms;
 
   return (
@@ -187,6 +224,7 @@ export default function App() {
         currentTick={currentTick}
         loading={loading}
         onRunSimulation={runSimulation}
+        onResetSimulation={resetSimulation}
       />
 
       {error && (
@@ -201,7 +239,7 @@ export default function App() {
           <DungeonMap rooms={rooms} agentStates={agentStates} roomStates={roomStates} />
         </div>
         <div className="w-full md:w-1/2 h-1/2 md:h-full min-h-0">
-          <EventLog events={events} currentTick={currentTick} />
+          <EventLog events={events} currentTick={isOnLiveTick ? liveTick : currentTick} />
         </div>
       </div>
 

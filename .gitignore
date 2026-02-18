@@ -37,3 +37,4 @@ neatMUD/rtNEAT/Debug/
 
 # Agent memory (regenerated each run)
 data/memories/*.json
+data/logs
