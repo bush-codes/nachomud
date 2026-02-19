@@ -12,9 +12,13 @@ else:
     AGENT_MODEL = os.environ.get("AGENT_MODEL", "claude-sonnet-4-20250514")
     NARRATOR_MODEL = os.environ.get("NARRATOR_MODEL", "claude-sonnet-4-20250514")
 
+QUEST_DESCRIPTION = "Explore the dungeon with your allies. Talk to NPCs for lore and gifts, gear up with better equipment, and slay the final boss."
+
 MAX_TICKS = 20
 NUM_AGENTS = 3
-ACTION_HISTORY_SIZE = 15  # rolling window of witnessed events shown to each agent
+ACTION_HISTORY_SIZE = 12  # rolling window of tactical events (combat, movement, items)
+COMM_HISTORY_SIZE = 5     # rolling window of ally communications (tell, say, whisper, yell)
+LORE_HISTORY_SIZE = 3     # rolling window of NPC dialogue summaries
 
 # Combat constants
 HEAL_PERCENT = 0.3
@@ -30,7 +34,7 @@ SPELL_COSTS = {
 }
 
 # Shared base personality for all agents
-BASE_PERSONALITY = "Works with allies to survive and progress. Fights enemies, picks up useful gear, and pushes deeper into the dungeon to find and defeat the boss."
+BASE_PERSONALITY = "Works with allies to survive and progress. Explores thoroughly to find better gear, defeats enemies for loot drops, talks to NPCs for gifts and intel, and coordinates with allies."
 
 # Agent starting stats
 AGENT_TEMPLATES = [

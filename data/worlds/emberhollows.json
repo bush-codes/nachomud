@@ -1,0 +1,192 @@
+{
+  "meta": {
+    "name": "The Ember Hollows",
+    "description": "Volcanic caverns beneath a dwarven city where a young dragon has nested. Descend through lava tubes and collapsed mines to slay the dragon before eruption."
+  },
+  "rooms": [
+    {
+      "id": "room_1",
+      "name": "Mine Entrance",
+      "description": "Splintered timber frames the mouth of an old dwarven mine shaft, heat rolling outward in waves. Soot-blackened rails run into the darkness, and the stone underfoot trembles with a distant, rhythmic rumble.",
+      "exits": {"n": "room_2"},
+      "mobs": [
+        {"name": "Ember Rat", "hp": 3, "max_hp": 3, "atk": 1, "mdef": 0, "is_boss": false, "loot": []}
+      ],
+      "npcs": [],
+      "items": [
+        {"name": "Miner's Pickaxe", "slot": "weapon", "atk": 2, "pdef": 0, "mdef": 0, "mdmg": 0}
+      ]
+    },
+    {
+      "id": "room_2",
+      "name": "Collapsed Tunnel",
+      "description": "The ceiling has partially caved in, leaving a narrow passage choked with rubble and dust. Broken mine carts lie on their sides, and the air tastes of copper and ash. Passages branch east and west through gaps in the fallen stone.",
+      "exits": {"s": "room_1", "w": "room_3", "e": "room_4"},
+      "mobs": [
+        {"name": "Cave Beetle", "hp": 4, "max_hp": 4, "atk": 2, "mdef": 0, "is_boss": false, "loot": []},
+        {"name": "Cave Beetle", "hp": 4, "max_hp": 4, "atk": 2, "mdef": 0, "is_boss": false, "loot": []}
+      ],
+      "npcs": [
+        {
+          "name": "Torvald",
+          "title": "Stranded Miner",
+          "dialogue": ["the western tunnels run hot with lava — watch your step", "dwarven vault's sealed tight down that way, if you can find the path", "something massive nests in the deep caves, shakes the whole mountain"],
+          "item": {"name": "Dwarven Buckler", "slot": "armor", "atk": 0, "pdef": 2, "mdef": 0, "mdmg": 0}
+        }
+      ],
+      "items": []
+    },
+    {
+      "id": "room_3",
+      "name": "West Lava Tube",
+      "description": "A natural lava tube stretches ahead, its walls glazed smooth and black like obsidian. Veins of molten rock pulse in the cracks, casting everything in a hellish orange glow. The heat is nearly unbearable.",
+      "exits": {"e": "room_2", "n": "room_5"},
+      "mobs": [
+        {"name": "Magma Slime", "hp": 5, "max_hp": 5, "atk": 2, "mdef": 1, "is_boss": false, "loot": []}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_4",
+      "name": "East Shaft",
+      "description": "A vertical mine shaft has been converted into a descending stairway, iron rungs hammered into the rock face. Phosphorescent fungus clings to the walls, and cool air drifts up from below, a welcome relief from the heat above.",
+      "exits": {"w": "room_2", "n": "room_6"},
+      "mobs": [
+        {"name": "Ash Goblin", "hp": 5, "max_hp": 5, "atk": 3, "mdef": 0, "is_boss": false, "loot": [
+          {"name": "Serrated Dagger", "slot": "weapon", "atk": 3, "pdef": 0, "mdef": 0, "mdmg": 0}
+        ]}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_5",
+      "name": "Magma Flow",
+      "description": "A river of molten rock cuts across the cavern floor, its surface cracking and reforming in slow, mesmerizing patterns. A narrow stone ledge follows the far wall, barely wide enough to traverse single-file. The air shimmers with heat distortion.",
+      "exits": {"s": "room_3", "n": "room_8", "w": "room_7"},
+      "mobs": [
+        {"name": "Cinder Elemental", "hp": 8, "max_hp": 8, "atk": 3, "mdef": 1, "is_boss": false, "loot": [
+          {"name": "Ember Ring", "slot": "ring", "atk": 0, "pdef": 0, "mdef": 1, "mdmg": 3}
+        ]}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_6",
+      "name": "Mushroom Grotto",
+      "description": "Towering bioluminescent mushrooms fill this cavern with pale blue and violet light. The air is thick with spores that drift like snow, and the ground squelches underfoot. Something has been nesting among the fungal stalks.",
+      "exits": {"s": "room_4", "n": "room_9", "e": "room_10"},
+      "mobs": [
+        {"name": "Spore Lurker", "hp": 6, "max_hp": 6, "atk": 2, "mdef": 2, "is_boss": false, "loot": []},
+        {"name": "Fungal Crawler", "hp": 5, "max_hp": 5, "atk": 3, "mdef": 1, "is_boss": false, "loot": []}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_7",
+      "name": "Dwarven Vault",
+      "description": "Behind a half-melted iron door lies a small chamber lined with stone strongboxes. Most have been fused shut by volcanic heat, but one sits cracked open, its contents glittering in the amber light. Dwarven runes of warding still glow faintly on the walls.",
+      "exits": {"e": "room_5"},
+      "mobs": [],
+      "npcs": [],
+      "items": [
+        {"name": "Runeforged Plate", "slot": "armor", "atk": 0, "pdef": 4, "mdef": 2, "mdmg": 0},
+        {"name": "Flameward Ring", "slot": "ring", "atk": 0, "pdef": 0, "mdef": 2, "mdmg": 5}
+      ]
+    },
+    {
+      "id": "room_8",
+      "name": "Obsidian Bridge",
+      "description": "A slender bridge of solid obsidian arcs over a chasm filled with roiling smoke and the distant glow of magma far below. The bridge is barely three feet wide, its surface razor-sharp at the edges. Wind howls up from the depths.",
+      "exits": {"s": "room_5", "e": "room_11"},
+      "mobs": [
+        {"name": "Lava Bat", "hp": 6, "max_hp": 6, "atk": 3, "mdef": 1, "is_boss": false, "loot": []},
+        {"name": "Lava Bat", "hp": 6, "max_hp": 6, "atk": 3, "mdef": 1, "is_boss": false, "loot": []}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_9",
+      "name": "Crystal Cave",
+      "description": "Enormous quartz crystals jut from every surface, refracting the volcanic light into prismatic shards that dance across the walls. The crystals hum with a low resonance that vibrates in the chest. A sulfurous draft blows from the west.",
+      "exits": {"s": "room_6", "w": "room_11"},
+      "mobs": [
+        {"name": "Crystal Golem", "hp": 10, "max_hp": 10, "atk": 4, "mdef": 2, "is_boss": false, "loot": [
+          {"name": "Crystal Greatsword", "slot": "weapon", "atk": 5, "pdef": 0, "mdef": 0, "mdmg": 0}
+        ]}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_10",
+      "name": "Abandoned Forge",
+      "description": "A dwarven forge stands cold and silent, its great bellows collapsed and anvil cracked. Tools hang on the walls in perfect rows, untouched by the chaos elsewhere. A spectral figure works at the anvil, hammer rising and falling without sound.",
+      "exits": {"w": "room_6"},
+      "mobs": [],
+      "npcs": [
+        {
+          "name": "Brega",
+          "title": "Ghost of the Forgemaster",
+          "dialogue": ["the drake fears nothing, but dragonbane steel can wound it deep", "my finest blade — take it, finish what we could not", "strike together or the beast will pick you off one by one"],
+          "item": {"name": "Dragonbane Blade", "slot": "weapon", "atk": 6, "pdef": 0, "mdef": 0, "mdmg": 0}
+        }
+      ],
+      "items": []
+    },
+    {
+      "id": "room_11",
+      "name": "Sulfur Cavern",
+      "description": "Yellow sulfur deposits crust every surface, and acrid fumes sting the eyes and throat. Bubbling fumaroles vent scalding steam at irregular intervals. The convergence of two passages makes this a natural chokepoint before the deeper caves.",
+      "exits": {"w": "room_8", "e": "room_9", "n": "room_12"},
+      "mobs": [
+        {"name": "Sulfur Wyrm", "hp": 11, "max_hp": 11, "atk": 4, "mdef": 1, "is_boss": false, "loot": []},
+        {"name": "Ash Goblin Firebrand", "hp": 7, "max_hp": 7, "atk": 3, "mdef": 1, "is_boss": false, "loot": [
+          {"name": "Firebrand Staff", "slot": "ring", "atk": 0, "pdef": 0, "mdef": 2, "mdmg": 6}
+        ]}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_12",
+      "name": "Lava Lake",
+      "description": "The cavern opens into a vast chamber dominated by a lake of slowly churning magma. Islands of cooled basalt form a precarious path across. The heat is savage, and the orange light paints everything in shades of fire and blood.",
+      "exits": {"s": "room_11", "n": "room_13"},
+      "mobs": [
+        {"name": "Magma Elemental", "hp": 14, "max_hp": 14, "atk": 5, "mdef": 2, "is_boss": false, "loot": [
+          {"name": "Molten Shield", "slot": "armor", "atk": 0, "pdef": 5, "mdef": 1, "mdmg": 0}
+        ]}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_13",
+      "name": "Dragon's Antechamber",
+      "description": "Scorched bones of dwarves and beasts alike litter the ground in grotesque piles. The walls are gouged with claw marks the size of a man's arm. A hot wind gusts from the north, carrying the unmistakable stench of dragon.",
+      "exits": {"s": "room_12", "n": "room_14"},
+      "mobs": [
+        {"name": "Drake Hatchling", "hp": 12, "max_hp": 12, "atk": 5, "mdef": 1, "is_boss": false, "loot": []},
+        {"name": "Drake Hatchling", "hp": 12, "max_hp": 12, "atk": 5, "mdef": 1, "is_boss": false, "loot": []}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_14",
+      "name": "Dragon's Nest",
+      "description": "A colossal cavern glowing with rivers of lava that feed a central caldera. Atop a mound of melted gold and charred stone, the Magma Drake Pyraxis coils — scales like cooling magma, eyes like twin furnaces. The ground shudders with each breath it draws.",
+      "exits": {"s": "room_13"},
+      "mobs": [
+        {"name": "Magma Drake Pyraxis", "hp": 32, "max_hp": 32, "atk": 7, "mdef": 2, "is_boss": true, "loot": []}
+      ],
+      "npcs": [],
+      "items": []
+    }
+  ]
+}

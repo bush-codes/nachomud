@@ -4,9 +4,11 @@ import json
 import os
 import random
 
+import config
 from models import Item, Mob, NPC, Room
 
-WORLD_FILE = os.path.join("data", "world.json")
+WORLDS_DIR = os.path.join("data", "worlds")
+LEGACY_WORLD_FILE = os.path.join("data", "world.json")
 
 
 def _parse_item(data: dict) -> Item:
@@ -44,19 +46,54 @@ def _parse_npc(data: dict) -> NPC:
     )
 
 
-def build_world() -> dict[str, Room]:
-    if os.path.exists(WORLD_FILE):
-        print(f"Loading world from {WORLD_FILE}...", flush=True)
-        with open(WORLD_FILE) as f:
+def list_worlds() -> list[dict]:
+    """Scan data/worlds/*.json and return [{id, name, description}] from each file's meta block."""
+    worlds = []
+    if not os.path.isdir(WORLDS_DIR):
+        return worlds
+    for fname in sorted(os.listdir(WORLDS_DIR)):
+        if not fname.endswith(".json"):
+            continue
+        world_id = fname[:-5]  # strip .json
+        fpath = os.path.join(WORLDS_DIR, fname)
+        try:
+            with open(fpath) as f:
+                data = json.load(f)
+            meta = data.get("meta", {})
+            worlds.append({
+                "id": world_id,
+                "name": meta.get("name", world_id),
+                "description": meta.get("description", ""),
+            })
+        except (json.JSONDecodeError, OSError):
+            continue
+    return worlds
+
+
+def build_world(world_id: str = "shadowfell") -> dict[str, Room]:
+    world_file = os.path.join(WORLDS_DIR, f"{world_id}.json")
+    if os.path.exists(world_file):
+        print(f"Loading world from {world_file}...", flush=True)
+        with open(world_file) as f:
+            world_data = json.load(f)
+    elif os.path.exists(LEGACY_WORLD_FILE):
+        # Backwards compat: fall back to data/world.json
+        print(f"Loading world from {LEGACY_WORLD_FILE}...", flush=True)
+        with open(LEGACY_WORLD_FILE) as f:
             world_data = json.load(f)
     else:
         from narrator import generate_world_json
         print("Generating world with LLM narrator...", flush=True)
         world_data = generate_world_json()
-        os.makedirs(os.path.dirname(WORLD_FILE), exist_ok=True)
-        with open(WORLD_FILE, "w") as f:
+        os.makedirs(WORLDS_DIR, exist_ok=True)
+        with open(world_file, "w") as f:
             json.dump(world_data, f, indent=2)
-        print(f"World saved to {WORLD_FILE}", flush=True)
+        print(f"World saved to {world_file}", flush=True)
+
+    # Set quest description from world meta
+    meta = world_data.get("meta", {})
+    if meta.get("description"):
+        config.QUEST_DESCRIPTION = meta["description"]
 
     rooms: dict[str, Room] = {}
     for room_data in world_data["rooms"]:
@@ -144,11 +181,26 @@ def get_room_state(room: Room, agent_names_here: list[str]) -> str:
     return "\n".join(parts)
 
 
+def _item_stat_str(item: "Item") -> str:
+    """Short stat string for an item: 'Rusty Sword (weapon, ATK:3)'."""
+    stats = []
+    if item.atk:
+        stats.append(f"ATK:{item.atk}")
+    if item.pdef:
+        stats.append(f"PDEF:{item.pdef}")
+    if item.mdef:
+        stats.append(f"MDEF:{item.mdef}")
+    if item.mdmg:
+        stats.append(f"MDMG:{item.mdmg}")
+    return f"{item.name} ({item.slot}, {', '.join(stats)})" if stats else f"{item.name} ({item.slot})"
+
+
 def build_sensory_context(
     room: Room,
     agent_names_here: list[str],
     rooms: dict[str, "Room"],
     agent_name: str,
+    visited_rooms: list[str] | None = None,
 ) -> str:
     """Build full sensory awareness: current room, adjacent rooms, allies."""
     parts = [f"You are in: {room.name}"]
@@ -163,9 +215,9 @@ def build_sensory_context(
     else:
         parts.append("Enemies here: none")
 
-    # Items (pickups, not enemies)
+    # Items with stats so agent can compare against equipment
     if room.items:
-        item_strs = [i.name for i in room.items]
+        item_strs = [_item_stat_str(i) for i in room.items]
         parts.append(f"Items on ground: {', '.join(item_strs)}")
     else:
         parts.append("Items on ground: none")
@@ -191,7 +243,9 @@ def build_sensory_context(
             adj = rooms[room.exits[d]]
             describe_room(adj)
             parts.append(f"  {dir_names[d]} ({d}): {adj.name}")
-        else:
-            parts.append(f"  {dir_names[d]}: no exit")
+
+    # Rooms visited so far (helps agent avoid backtracking)
+    if visited_rooms:
+        parts.append(f"\nRooms visited: {', '.join(visited_rooms)}")
 
     return "\n".join(parts)

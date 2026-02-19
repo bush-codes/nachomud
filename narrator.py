@@ -39,6 +39,16 @@ def narrate_npc_dialogue(npc_name: str, npc_title: str, dialogue_hints: list[str
     )
 
 
+def summarize_npc_dialogue(npc_name: str, dialogue: str) -> str:
+    """Summarize NPC dialogue to 1-2 short sentences for agent memory."""
+    return chat(
+        system="Summarize this NPC dialogue in 1-2 short sentences. Focus on useful information (warnings, gifts, directions). Skip atmospheric flavor.",
+        message=f"{npc_name} says: {dialogue}",
+        model=NARRATOR_MODEL,
+        max_tokens=40,
+    )
+
+
 def generate_world_json() -> dict:
     prompt = """Generate a dungeon for Durnhollow fortress as JSON. Requirements:
 - Exactly 15 rooms with unique IDs like "room_1", "room_2", etc.

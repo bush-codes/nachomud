@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { SimulationResult, AgentSnapshot, GameEventData, RoomInfo, RoomSnapshot } from "./types";
+import { SimulationResult, AgentSnapshot, GameEventData, RoomInfo, RoomSnapshot, WorldInfo } from "./types";
 import GameHeader from "./components/GameHeader";
 import DungeonMap from "./components/DungeonMap";
 import AgentPanel from "./components/AgentPanel";
@@ -16,15 +16,46 @@ export default function App() {
   const [maxTicks, setMaxTicks] = useState(20);
   const [agentModel, setAgentModel] = useState("gemma3:4b");
   const [currentTick, setCurrentTick] = useState(0);
+  const DEFAULT_WORLDS: WorldInfo[] = [
+    { id: "shadowfell", name: "Shadowfell Rift", description: "" },
+    { id: "frostpeak", name: "Frostpeak Citadel", description: "" },
+    { id: "serpentmire", name: "The Serpent's Mire", description: "" },
+    { id: "emberhollows", name: "The Ember Hollows", description: "" },
+  ];
+  const [worlds, setWorlds] = useState<WorldInfo[]>(DEFAULT_WORLDS);
+  const [selectedWorld, setSelectedWorld] = useState("shadowfell");
   const abortRef = useRef<AbortController | null>(null);
 
-  // Load the static world map on mount
+  // Changing the world resets any completed/running simulation so the new map shows
+  const handleWorldChange = useCallback((worldId: string) => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+    setSelectedWorld(worldId);
+    setSimulation(null);
+    setLoading(false);
+    setAllEvents([]);
+    setLatestAgentStates([]);
+    setLatestRoomStates({});
+    setCurrentTick(0);
+  }, []);
+
+  // Load available worlds on mount
   useEffect(() => {
-    fetch("/api/world")
+    fetch("/api/worlds")
+      .then((res) => res.json())
+      .then((data: WorldInfo[]) => setWorlds(data))
+      .catch(() => {});
+  }, []);
+
+  // Load world map when selection changes
+  useEffect(() => {
+    fetch(`/api/world?world_id=${encodeURIComponent(selectedWorld)}`)
       .then((res) => res.json())
       .then((data) => setWorldRooms(data.rooms ?? []))
       .catch(() => {});
-  }, []);
+  }, [selectedWorld]);
 
   const resetSimulation = useCallback(() => {
     if (abortRef.current) {
@@ -57,7 +88,7 @@ export default function App() {
     setCurrentTick(0);
 
     try {
-      const res = await fetch(`/api/simulate?max_ticks=${maxTicks}&agent_model=${encodeURIComponent(agentModel)}`, { method: "POST", signal: controller.signal });
+      const res = await fetch(`/api/simulate?max_ticks=${maxTicks}&agent_model=${encodeURIComponent(agentModel)}&world_id=${encodeURIComponent(selectedWorld)}`, { method: "POST", signal: controller.signal });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.detail || `Server error: ${res.status}`);
@@ -95,7 +126,6 @@ export default function App() {
             const names = agents.map((a) => `${a.name} the ${a.agent_class}`).join(", ");
             setAllEvents((prev) => [...prev,
               { agent: "system", action: "system", result: `${names} enter the dungeon.`, room_id: "" },
-              { agent: "system", action: "system", result: "Round 0: The party discusses their plan...", room_id: "" },
             ]);
           } else if (msg.type === "event") {
             setAllEvents((prev) => [...prev, msg.event]);
@@ -140,7 +170,7 @@ export default function App() {
       abortRef.current = null;
       setLoading(false);
     }
-  }, [maxTicks, agentModel]);
+  }, [maxTicks, agentModel, selectedWorld]);
 
   // Derive agent states: use latest from stream, or fall back to initial agent info
   const agentStates: AgentSnapshot[] = latestAgentStates.length > 0
@@ -172,6 +202,9 @@ export default function App() {
         currentTick={currentTick}
         maxTicks={maxTicks}
         agentModel={agentModel}
+        worlds={worlds}
+        selectedWorld={selectedWorld}
+        onWorldChange={handleWorldChange}
         onMaxTicksChange={setMaxTicks}
         onAgentModelChange={setAgentModel}
         onRunSimulation={runSimulation}

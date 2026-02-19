@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { RoomInfo, AgentSnapshot, RoomSnapshot, AGENT_COLORS } from "../types";
 
 interface DungeonMapProps {
@@ -7,53 +7,126 @@ interface DungeonMapProps {
   roomStates: Record<string, RoomSnapshot>;
 }
 
-// Manual layout for the 15-room dungeon topology
-// Based on world.json exits:
-// room_1 -> n -> room_2
-// room_2 -> e -> room_3, n -> room_4
-// room_4 -> e -> room_5, n -> room_6
-// room_6 -> e -> room_7, n -> room_8
-// room_7 -> n -> room_9
-// room_8 -> e -> room_9, n -> room_10
-// room_9 -> n -> room_11
-// room_10 -> n -> room_12
-// room_11 -> n -> room_13
-// room_12 -> e -> room_13, n -> room_14
-// room_13 -> n -> room_14
-// room_14 -> n -> room_15
-
 const ROOM_W = 130;
 const ROOM_H = 44;
+const GRID_X = 170; // horizontal spacing between grid cells
+const GRID_Y = 80;  // vertical spacing between grid cells
 
-const ROOM_POSITIONS: Record<string, { x: number; y: number }> = {
-  room_1:  { x: 100, y: 550 },
-  room_2:  { x: 100, y: 460 },
-  room_3:  { x: 270, y: 460 },
-  room_4:  { x: 100, y: 370 },
-  room_5:  { x: 270, y: 370 },
-  room_6:  { x: 100, y: 280 },
-  room_7:  { x: 270, y: 280 },
-  room_8:  { x: 100, y: 190 },
-  room_9:  { x: 270, y: 190 },
-  room_10: { x: 100, y: 100 },
-  room_11: { x: 270, y: 100 },
-  room_12: { x: 100, y: 10 },
-  room_13: { x: 270, y: 10 },
-  room_14: { x: 185, y: -70 },
-  room_15: { x: 185, y: -150 },
+// Direction offsets on the grid: n=up (negative y), s=down, e=right, w=left
+const DIR_OFFSET: Record<string, { dx: number; dy: number }> = {
+  n: { dx: 0, dy: -1 },
+  s: { dx: 0, dy: 1 },
+  e: { dx: 1, dy: 0 },
+  w: { dx: -1, dy: 0 },
 };
 
+function computeRoomPositions(rooms: RoomInfo[]): Record<string, { x: number; y: number }> {
+  if (rooms.length === 0) return {};
+
+  const roomMap = new Map(rooms.map((r) => [r.id, r]));
+  const gridPos: Record<string, { gx: number; gy: number }> = {};
+  const occupied = new Map<string, string>(); // "gx,gy" -> room_id
+
+  // BFS from room_1 (or first room)
+  const startId = roomMap.has("room_1") ? "room_1" : rooms[0].id;
+  const queue: string[] = [startId];
+  gridPos[startId] = { gx: 0, gy: 0 };
+  occupied.set("0,0", startId);
+
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    const current = roomMap.get(currentId);
+    if (!current) continue;
+    const { gx, gy } = gridPos[currentId];
+
+    for (const [dir, targetId] of Object.entries(current.exits)) {
+      if (gridPos[targetId] !== undefined) continue; // already placed
+      if (!roomMap.has(targetId)) continue;
+
+      const offset = DIR_OFFSET[dir];
+      if (!offset) continue;
+
+      let nx = gx + offset.dx;
+      let ny = gy + offset.dy;
+
+      // If cell is occupied, try shifting further in the same direction
+      let attempts = 0;
+      while (occupied.has(`${nx},${ny}`) && attempts < 5) {
+        nx += offset.dx;
+        ny += offset.dy;
+        attempts++;
+      }
+
+      // If still occupied, try perpendicular offsets
+      if (occupied.has(`${nx},${ny}`)) {
+        const perpDirs = offset.dx === 0 ? [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }] : [{ dx: 0, dy: 1 }, { dx: 0, dy: -1 }];
+        let placed = false;
+        for (const perp of perpDirs) {
+          const testX = gx + offset.dx + perp.dx;
+          const testY = gy + offset.dy + perp.dy;
+          if (!occupied.has(`${testX},${testY}`)) {
+            nx = testX;
+            ny = testY;
+            placed = true;
+            break;
+          }
+        }
+        if (!placed) {
+          // Last resort: find nearest empty cell
+          for (let r = 1; r <= 10; r++) {
+            let found = false;
+            for (let dx = -r; dx <= r && !found; dx++) {
+              for (let dy = -r; dy <= r && !found; dy++) {
+                if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+                const testX = gx + offset.dx + dx;
+                const testY = gy + offset.dy + dy;
+                if (!occupied.has(`${testX},${testY}`)) {
+                  nx = testX;
+                  ny = testY;
+                  found = true;
+                }
+              }
+            }
+            if (found) break;
+          }
+        }
+      }
+
+      gridPos[targetId] = { gx: nx, gy: ny };
+      occupied.set(`${nx},${ny}`, targetId);
+      queue.push(targetId);
+    }
+  }
+
+  // Place any rooms not reached by BFS (disconnected)
+  for (const room of rooms) {
+    if (gridPos[room.id] === undefined) {
+      let fx = 0, fy = 0;
+      while (occupied.has(`${fx},${fy}`)) fx++;
+      gridPos[room.id] = { gx: fx, gy: fy };
+      occupied.set(`${fx},${fy}`, room.id);
+    }
+  }
+
+  // Convert grid coordinates to pixel positions
+  const positions: Record<string, { x: number; y: number }> = {};
+  for (const [id, { gx, gy }] of Object.entries(gridPos)) {
+    positions[id] = { x: gx * GRID_X, y: gy * GRID_Y };
+  }
+
+  return positions;
+}
+
 function getRoomColor(room: RoomInfo, roomState: RoomSnapshot | undefined): string {
-  // Boss room
   const hasBoss = room.mobs.some((m) => m.is_boss);
   const livingMobs = roomState
     ? roomState.mobs.filter((m) => m.hp > 0)
     : room.mobs.filter((m) => m.hp > 0);
 
-  if (hasBoss && livingMobs.length > 0) return "#4a1942"; // purple glow for boss
-  if (livingMobs.length > 0) return "#3b1a1a"; // red tint for danger
-  if (room.npcs.length > 0) return "#1a2e1a"; // green tint for NPCs
-  return "#1e1e2e"; // dark visited
+  if (hasBoss && livingMobs.length > 0) return "#4a1942";
+  if (livingMobs.length > 0) return "#3b1a1a";
+  if (room.npcs.length > 0) return "#1a2e1a";
+  return "#1e1e2e";
 }
 
 function getRoomBorder(room: RoomInfo, roomState: RoomSnapshot | undefined): string {
@@ -68,7 +141,20 @@ function getRoomBorder(room: RoomInfo, roomState: RoomSnapshot | undefined): str
 }
 
 export default function DungeonMap({ rooms, agentStates, roomStates }: DungeonMapProps) {
-  const roomMap = new Map(rooms.map((r) => [r.id, r]));
+  const positions = useMemo(() => computeRoomPositions(rooms), [rooms]);
+
+  // Compute viewBox from bounding box of all positions
+  const viewBox = useMemo(() => {
+    const posValues = Object.values(positions);
+    if (posValues.length === 0) return "-10 -10 450 600";
+    const xs = posValues.map((p) => p.x);
+    const ys = posValues.map((p) => p.y);
+    const minX = Math.min(...xs) - 20;
+    const minY = Math.min(...ys) - 20;
+    const maxX = Math.max(...xs) + ROOM_W + 20;
+    const maxY = Math.max(...ys) + ROOM_H + 20;
+    return `${minX} ${minY} ${maxX - minX} ${maxY - minY}`;
+  }, [positions]);
 
   // Collect all edges
   const edges: { from: string; to: string }[] = [];
@@ -94,7 +180,7 @@ export default function DungeonMap({ rooms, agentStates, roomStates }: DungeonMa
 
   return (
     <div className="h-full overflow-hidden bg-gray-950 rounded-lg border border-gray-800 p-2">
-      <svg viewBox="-10 -180 450 780" className="w-full h-full">
+      <svg viewBox={viewBox} className="w-full h-full">
         <defs>
           <filter id="glow">
             <feGaussianBlur stdDeviation="3" result="coloredBlur" />
@@ -107,8 +193,8 @@ export default function DungeonMap({ rooms, agentStates, roomStates }: DungeonMa
 
         {/* Draw edges */}
         {edges.map(({ from, to }) => {
-          const fp = ROOM_POSITIONS[from];
-          const tp = ROOM_POSITIONS[to];
+          const fp = positions[from];
+          const tp = positions[to];
           if (!fp || !tp) return null;
           return (
             <line
@@ -125,7 +211,7 @@ export default function DungeonMap({ rooms, agentStates, roomStates }: DungeonMa
 
         {/* Draw rooms */}
         {rooms.map((room) => {
-          const pos = ROOM_POSITIONS[room.id];
+          const pos = positions[room.id];
           if (!pos) return null;
           const rs = roomStates[room.id];
           const fill = getRoomColor(room, rs);

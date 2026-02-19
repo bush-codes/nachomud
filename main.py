@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 
-from agent import get_agent_action, get_agent_discussion, parse_action
+from agent import get_agent_action, get_agent_comm, parse_action
 from combat import (
     resolve_attack,
     resolve_fireball,
@@ -11,12 +11,38 @@ from combat import (
     resolve_poison,
     tick_poison,
 )
-from config import ACTION_HISTORY_SIZE, AGENT_TEMPLATES, MAX_TICKS
+from config import ACTION_HISTORY_SIZE, AGENT_TEMPLATES, COMM_HISTORY_SIZE, LORE_HISTORY_SIZE, MAX_TICKS
 from models import AgentState, GameEvent, Item, Room
-from narrator import narrate_combat, narrate_npc_dialogue
-from world import build_sensory_context, build_world, describe_room
+from narrator import narrate_combat, narrate_npc_dialogue, summarize_npc_dialogue
+from world import build_sensory_context, build_world, describe_room, list_worlds
 
 DIRECTION_NAMES = {"n": "north", "s": "south", "e": "east", "w": "west"}
+OPPOSITE_DIRECTION = {"n": "south", "s": "north", "e": "west", "w": "east"}
+
+
+def rooms_within_range(start_room_id: str, rooms: dict[str, Room], max_hops: int = 3) -> dict[str, tuple[int, str]]:
+    """BFS from start_room_id, returning {room_id: (distance, direction_from)}.
+
+    direction_from is the direction the yell came FROM (opposite of the exit
+    taken), so an adjacent room to the north gets direction_from="south"
+    meaning the yell came from the south.
+    """
+    from collections import deque
+    visited: dict[str, tuple[int, str]] = {start_room_id: (0, "")}
+    queue: deque[str] = deque([start_room_id])
+    while queue:
+        current = queue.popleft()
+        dist, _ = visited[current]
+        if dist >= max_hops:
+            continue
+        room = rooms[current]
+        for direction, neighbor_id in room.exits.items():
+            if neighbor_id not in visited:
+                # The yell came FROM the opposite direction
+                from_dir = OPPOSITE_DIRECTION.get(direction, direction)
+                visited[neighbor_id] = (dist + 1, from_dir)
+                queue.append(neighbor_id)
+    return visited
 
 # Force unbuffered output so the game can be watched live
 _builtin_print = print
@@ -115,14 +141,19 @@ def resolve_action(
                 npc.interactions_left -= 1
                 dialogue = narrate_npc_dialogue(npc.name, npc.title, npc.dialogue, agent.name)
                 result = f"{npc.name} says: {dialogue}"
+                # Summarize for witnessed history so NPC dialogue doesn't dominate
+                summary = summarize_npc_dialogue(npc.name, dialogue)
+                witness = f"{npc.name} says: {summary}"
                 if npc.item and not npc.item_given:
                     agent.inventory.append(npc.item)
                     equip_item(agent, npc.item)
                     result += f"\n  {npc.name} gives {agent.name} a {npc.item.name}!"
+                    witness += f" {npc.name} gives {agent.name} a {npc.item.name}."
                     npc.item_given = True
             else:
                 result = f"{npc.name} has nothing more to say."
-            events.append(GameEvent(tick, agent.name, f"tell {npc.name}", result, agent.room_id))
+                witness = ""
+            events.append(GameEvent(tick, agent.name, f"tell {npc.name}", result, agent.room_id, witness_text=witness, category="lore"))
         else:
             # Check agents in the room
             target_agent = None
@@ -132,7 +163,7 @@ def resolve_action(
                     break
             if target_agent:
                 result = f'{agent.name} tells {target_agent.name}: "{message}"'
-                events.append(GameEvent(tick, agent.name, f"tell {target_agent.name}", result, agent.room_id))
+                events.append(GameEvent(tick, agent.name, f"tell {target_agent.name}", result, agent.room_id, category="comm"))
             else:
                 others = agents_in_room(agents, agent.room_id, agent.name)
                 npcs_here = [n.name for n in room.npcs]
@@ -149,7 +180,31 @@ def resolve_action(
             result = f'{agent.name} says: "{arg}" (heard by {", ".join(others)})'
         else:
             result = f'{agent.name} says: "{arg}" (nobody else is here)'
-        events.append(GameEvent(tick, agent.name, "say", result, agent.room_id))
+        events.append(GameEvent(tick, agent.name, "say", result, agent.room_id, category="comm"))
+
+    elif cmd == "whisper":
+        parts = arg.split(None, 1)
+        target_name = parts[0].lower() if parts else ""
+        message = parts[1] if len(parts) > 1 else ""
+        target_agent = None
+        for a in agents:
+            if a.alive and a.room_id == agent.room_id and a.name != agent.name and target_name in a.name.lower():
+                target_agent = a
+                break
+        if target_agent:
+            result = f'{agent.name} whispers to {target_agent.name}: "{message}"'
+            events.append(GameEvent(tick, agent.name, f"whisper {target_agent.name}", result, agent.room_id, category="comm"))
+        else:
+            others = agents_in_room(agents, agent.room_id, agent.name)
+            if others:
+                result = f"No ally named '{target_name}' here. Allies in room: {', '.join(others)}."
+            else:
+                result = f"No ally named '{target_name}' here. You are alone."
+            events.append(GameEvent(tick, agent.name, f"whisper {target_name}", result, agent.room_id))
+
+    elif cmd == "yell":
+        result = f'{agent.name} yells: "{arg}"'
+        events.append(GameEvent(tick, agent.name, "yell", result, agent.room_id, category="comm"))
 
     elif cmd in ("get", "take", "pick"):
         # Normalize: "pick up X" -> arg="up X", strip the "up"
@@ -251,57 +306,119 @@ def main() -> None:
         print(f"  {a.name} the {a.agent_class} - HP:{a.hp}/{a.max_hp} MP:{a.mp}/{a.max_mp}")
     print()
 
-    # Describe starting room
+    # Describe starting room and track as visited
     start_room = rooms["room_1"]
     describe_room(start_room)
+    for a in agents:
+        a.visited_rooms.append(start_room.name)
     print(f"Starting location: {start_room.name}")
     print(f"  {start_room.description}\n")
 
-    # ── Round 0: one-time planning discussion ──
-    print("\n--- ROUND 0: PLANNING ---")
-    round0_plan: list[str] = []
-    all_names = [a.name for a in agents]
-
-    for agent in agents:
-        others = [a.name for a in agents if a.name != agent.name]
-        sensory = build_sensory_context(start_room, all_names, rooms, agent.name)
-        try:
-            utterance = get_agent_discussion(agent, sensory, others, round0_plan)
-        except Exception as e:
-            print(f"  [ERROR] {agent.name} discussion failed: {e}")
-            utterance = "Let's keep moving."
-        round0_plan.append(f"{agent.name}: {utterance}")
-        print(f"[{agent.name}] Says: {utterance}")
-
-    print()
-
-    def _witness(event_text: str, room_id: str, acting_agent_name: str = "") -> None:
-        """Append an event to action_history of all agents in the given room."""
+    def _witness(event_text: str, room_id: str, acting_agent_name: str = "", history: str = "action") -> None:
+        """Append an event to the appropriate history of all agents in the given room."""
         for a in agents:
             if a.alive and a.room_id == room_id:
-                if a.name == acting_agent_name:
-                    a.action_history.append(f">> {event_text}")
+                text = f">> {event_text}" if a.name == acting_agent_name else event_text
+                if history == "comm":
+                    a.comm_history.append(text)
+                    a.comm_history = a.comm_history[-COMM_HISTORY_SIZE:]
+                elif history == "lore":
+                    a.lore_history.append(text)
+                    a.lore_history = a.lore_history[-LORE_HISTORY_SIZE:]
                 else:
-                    a.action_history.append(event_text)
-                a.action_history = a.action_history[-ACTION_HISTORY_SIZE:]
+                    a.action_history.append(text)
+                    a.action_history = a.action_history[-ACTION_HISTORY_SIZE:]
+
+    def _witness_private(event_text: str, acting_agent_name: str, target_agent_name: str) -> None:
+        """Only sender (with >>) and target see the event. Always comm history."""
+        for a in agents:
+            if a.name == acting_agent_name:
+                a.comm_history.append(f">> {event_text}")
+                a.comm_history = a.comm_history[-COMM_HISTORY_SIZE:]
+            elif a.name == target_agent_name and a.alive:
+                a.comm_history.append(event_text)
+                a.comm_history = a.comm_history[-COMM_HISTORY_SIZE:]
+
+    def _witness_yell(agent_name: str, message: str, source_room_id: str) -> None:
+        """BFS broadcast with distance-dependent text formatting. Always comm history."""
+        reachable = rooms_within_range(source_room_id, rooms, max_hops=3)
+        source_room = rooms[source_room_id]
+        for room_id, (dist, from_dir) in reachable.items():
+            if dist == 0:
+                text = f'{agent_name} yells: "{message}"'
+            elif dist == 1:
+                text = f'{agent_name} yells from the {from_dir} ({source_room.name}): "{message}"'
+            else:
+                text = f'{agent_name} yells in the distance: "{message}"'
+            for a in agents:
+                if a.alive and a.room_id == room_id:
+                    if a.name == agent_name:
+                        a.comm_history.append(f'>> yell {message} → {agent_name} yells: "{message}"')
+                    else:
+                        a.comm_history.append(text)
+                    a.comm_history = a.comm_history[-COMM_HISTORY_SIZE:]
 
     for tick in range(1, MAX_TICKS + 1):
         print_tick_header(tick)
 
         all_tick_events: list[GameEvent] = []
 
+        # ── Communication phase ──
         for agent in agents:
             if not agent.alive:
                 continue
 
             room = rooms[agent.room_id]
             others = agents_in_room(agents, agent.room_id, agent.name)
-            sensory = build_sensory_context(room, [agent.name] + others, rooms, agent.name)
+            sensory = build_sensory_context(room, [agent.name] + others, rooms, agent.name, agent.visited_rooms)
+
+            try:
+                comm_think, comm_action = get_agent_comm(agent, sensory, others, room=room, allies=agents)
+            except Exception as e:
+                print(f"  [ERROR] {agent.name} comm failed: {e}")
+                continue
+
+            if comm_think:
+                print(f"[{agent.name}] Comm Think: {comm_think}")
+
+            if comm_action is None:
+                print(f"[{agent.name}] Comm: (silent)")
+                continue
+
+            print(f"[{agent.name}] Comm: {comm_action}")
+
+            cmd, arg = parse_action(comm_action)
+            pre_action_room = agent.room_id
+            events = resolve_action(agent, cmd, arg, rooms, agents, tick)
+            all_tick_events.extend(events)
+
+            for e in events:
+                result_line = e.witness_text or e.result.split("\n")[0]
+                if e.action.startswith("whisper"):
+                    target_name = e.action.split(None, 1)[1] if " " in e.action else ""
+                    _witness_private(result_line, agent.name, target_name)
+                elif e.action == "yell":
+                    _witness_yell(agent.name, arg, pre_action_room)
+                else:
+                    _witness(result_line, agent.room_id, agent.name, history=e.category)
+
+            for e in events:
+                for line in e.result.split("\n"):
+                    print(f"  > {line}")
+            print()
+
+        # ── Action phase ──
+        for agent in agents:
+            if not agent.alive:
+                continue
+
+            room = rooms[agent.room_id]
+            others = agents_in_room(agents, agent.room_id, agent.name)
+            sensory = build_sensory_context(room, [agent.name] + others, rooms, agent.name, agent.visited_rooms)
 
             # Get action from LLM
             try:
-                plan = round0_plan if tick == 1 else None
-                think, action_str, retries = get_agent_action(agent, sensory, room=room, allies=agents, round0_plan=plan)
+                think, action_str, retries = get_agent_action(agent, sensory, room=room, allies=agents)
             except Exception as e:
                 print(f"  [ERROR] {agent.name} agent failed: {e}")
                 think, action_str, retries = "", "say I'm not sure what to do.", []
@@ -324,15 +441,20 @@ def main() -> None:
             agent.last_action = action_str
             agent.last_result = events[0].result.split("\n")[0] if events else ""
 
+            # Track visited rooms on movement
+            if events and events[0].action.startswith("move"):
+                new_room = rooms[agent.room_id]
+                if new_room.name not in agent.visited_rooms:
+                    agent.visited_rooms.append(new_room.name)
+
             # Witnessed events: everyone in the room sees the result
             for e in events:
-                result_line = e.result.split("\n")[0]
-                if "moves" in e.action:
-                    # Old room: others see departure (agent already moved, won't match)
+                result_line = e.witness_text or e.result.split("\n")[0]
+                if e.action.startswith("move"):
+                    # Old room: others see departure
                     _witness(f"{agent.name} leaves heading {DIRECTION_NAMES.get(cmd, cmd)}", pre_action_room)
                     # New room: others see arrival from the opposite direction
-                    opposite = {"n": "south", "s": "north", "e": "west", "w": "east"}
-                    arrival_dir = opposite.get(cmd, "somewhere")
+                    arrival_dir = OPPOSITE_DIRECTION.get(cmd, "somewhere")
                     for a in agents:
                         if a.alive and a.room_id == agent.room_id and a.name != agent.name:
                             a.action_history.append(f"{agent.name} arrives from the {arrival_dir}")
@@ -340,8 +462,13 @@ def main() -> None:
                     # Moving agent: own action
                     agent.action_history.append(f">> {action_str} → {result_line}")
                     agent.action_history = agent.action_history[-ACTION_HISTORY_SIZE:]
+                elif e.action.startswith("whisper"):
+                    target_name = e.action.split(None, 1)[1] if " " in e.action else ""
+                    _witness_private(result_line, agent.name, target_name)
+                elif e.action == "yell":
+                    _witness_yell(agent.name, arg, pre_action_room)
                 else:
-                    _witness(result_line, agent.room_id, agent.name)
+                    _witness(result_line, agent.room_id, agent.name, history=e.category)
 
             # Print events
             print_agent_events(agent, events, rooms)

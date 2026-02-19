@@ -1,0 +1,171 @@
+{
+  "meta": {
+    "name": "The Serpent's Mire",
+    "description": "A cursed swamp where a Naga Sorceress has raised an army of lizardfolk. Navigate treacherous bogs to reach the sunken temple."
+  },
+  "rooms": [
+    {
+      "id": "room_1",
+      "name": "Fishing Village",
+      "description": "A ramshackle collection of stilted huts perches above the dark water at the swamp's edge. Frayed nets hang from crooked poles, and the smell of smoked fish mingles with the ever-present stench of rotting vegetation. The villagers have fled, leaving only silence and the distant croaking of frogs.",
+      "exits": {"n": "room_2"},
+      "mobs": [],
+      "npcs": [
+        {
+          "name": "Old Marsh",
+          "title": "Swamp Hermit",
+          "dialogue": ["the western mangroves are safer but longer", "lizardfolk have taken the eastern flats", "Ssythara's temple lies beyond the flooded ruins"],
+          "item": {"name": "Bog Oak Staff", "slot": "weapon", "atk": 3, "pdef": 0, "mdef": 0, "mdmg": 0}
+        }
+      ],
+      "items": [
+        {"name": "Fishscale Vest", "slot": "armor", "atk": 0, "pdef": 2, "mdef": 0, "mdmg": 0}
+      ]
+    },
+    {
+      "id": "room_2",
+      "name": "Murky Shallows",
+      "description": "Knee-deep brackish water stretches in every direction, choked with reeds and algae. Bubbles rise lazily from the muck below, releasing pockets of foul gas. The path splits here: tangled mangroves to the west and sun-bleached mud flats to the east.",
+      "exits": {"s": "room_1", "w": "room_3", "e": "room_4"},
+      "mobs": [
+        {"name": "Swamp Leech", "hp": 4, "max_hp": 4, "atk": 2, "mdef": 0, "is_boss": false, "loot": []}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_3",
+      "name": "Twisted Mangroves",
+      "description": "Gnarled mangrove roots twist out of the black water like skeletal fingers, forming a claustrophobic tunnel of bark and hanging moss. Venomous snakes coil around the branches overhead, their scales gleaming wetly in the filtered light.",
+      "exits": {"e": "room_2", "n": "room_5"},
+      "mobs": [
+        {"name": "Mire Viper", "hp": 5, "max_hp": 5, "atk": 3, "mdef": 0, "is_boss": false, "loot": []}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_4",
+      "name": "Quicksand Flats",
+      "description": "A deceptive expanse of pale mud stretches between patches of saw grass. What looks like solid ground gives way without warning into sucking quicksand. The bleached bones of previous travelers jut from the mire as grim warnings.",
+      "exits": {"w": "room_2", "n": "room_6"},
+      "mobs": [
+        {"name": "Mud Lurker", "hp": 7, "max_hp": 7, "atk": 3, "mdef": 1, "is_boss": false, "loot": [
+          {"name": "Serrated Fang", "slot": "weapon", "atk": 4, "pdef": 0, "mdef": 0, "mdmg": 0}
+        ]},
+        {"name": "Bog Crawler", "hp": 5, "max_hp": 5, "atk": 3, "mdef": 0, "is_boss": false, "loot": []}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_5",
+      "name": "Bog of Whispers",
+      "description": "Ghostly wisps of phosphorescent gas drift between the cypress trees, casting an eerie green glow over the still water. Voices seem to murmur from the fog, half-formed words that tug at the edges of sanity. The bog is deceptively deep here.",
+      "exits": {"s": "room_3", "n": "room_7", "e": "room_6"},
+      "mobs": [
+        {"name": "Will-o-Wisp", "hp": 6, "max_hp": 6, "atk": 2, "mdef": 2, "is_boss": false, "loot": [
+          {"name": "Glowing Ember Ring", "slot": "ring", "atk": 0, "pdef": 0, "mdef": 1, "mdmg": 3}
+        ]}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_6",
+      "name": "Lizardfolk Camp",
+      "description": "A crude encampment of mud-daubed tents and sharpened stakes rises from a marshy island. Totems carved from swamp wood are adorned with feathers and small skulls. Cook fires smolder beneath racks of drying meat, and the ground is trampled to mud by clawed feet.",
+      "exits": {"s": "room_4", "w": "room_5", "n": "room_8"},
+      "mobs": [
+        {"name": "Lizardfolk Warrior", "hp": 8, "max_hp": 8, "atk": 4, "mdef": 1, "is_boss": false, "loot": [
+          {"name": "Bone Scale Armor", "slot": "armor", "atk": 0, "pdef": 4, "mdef": 1, "mdmg": 0}
+        ]},
+        {"name": "Lizardfolk Skirmisher", "hp": 6, "max_hp": 6, "atk": 3, "mdef": 0, "is_boss": false, "loot": []}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_7",
+      "name": "Crocodile Den",
+      "description": "The waterway narrows into a murky channel littered with gnawed bones and torn vegetation. Logs that are not logs drift with unblinking yellow eyes just above the surface. The banks are scarred with deep claw marks and drag trails.",
+      "exits": {"s": "room_5", "e": "room_9"},
+      "mobs": [
+        {"name": "Giant Crocodile", "hp": 10, "max_hp": 10, "atk": 4, "mdef": 0, "is_boss": false, "loot": []}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_8",
+      "name": "Venom Pools",
+      "description": "Sickly yellow-green pools bubble between cracked stone platforms, their vapors burning the eyes and throat. The vegetation here is warped and discolored, leaves curling into black spirals. A lizardfolk shaman tends a cauldron of vile brew at the pool's edge.",
+      "exits": {"s": "room_6", "w": "room_9"},
+      "mobs": [
+        {"name": "Lizardfolk Shaman", "hp": 8, "max_hp": 8, "atk": 3, "mdef": 2, "is_boss": false, "loot": [
+          {"name": "Venomtide Ring", "slot": "ring", "atk": 0, "pdef": 0, "mdef": 2, "mdmg": 5}
+        ]},
+        {"name": "Poison Toad", "hp": 6, "max_hp": 6, "atk": 3, "mdef": 1, "is_boss": false, "loot": []}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_9",
+      "name": "Flooded Ruins",
+      "description": "Crumbling stone walls and toppled columns rise from waist-deep water, remnants of a civilization swallowed by the swamp long ago. Carvings of serpents and scaled figures are still visible on the stonework. Something large shifts beneath the dark water between the pillars.",
+      "exits": {"w": "room_7", "e": "room_8", "n": "room_10"},
+      "mobs": [
+        {"name": "Drowned Revenant", "hp": 10, "max_hp": 10, "atk": 4, "mdef": 1, "is_boss": false, "loot": [
+          {"name": "Waterlogged Blade", "slot": "weapon", "atk": 5, "pdef": 0, "mdef": 0, "mdmg": 0}
+        ]}
+      ],
+      "npcs": [
+        {
+          "name": "Thessk",
+          "title": "Exiled Lizardfolk",
+          "dialogue": ["Ssythara betrayed my clutch to fuel her rituals", "the temple wards weaken when she channels her magic", "strike when the green fire dims"],
+          "item": null
+        }
+      ],
+      "items": []
+    },
+    {
+      "id": "room_10",
+      "name": "Sunken Causeway",
+      "description": "A half-submerged stone road stretches through the deepest part of the swamp, its ancient flagstones slick with algae and cracked by enormous roots. The water on either side is black and fathomless. Ahead, the silhouette of the sunken temple rises from the mist.",
+      "exits": {"s": "room_9", "n": "room_11"},
+      "mobs": [
+        {"name": "Serpent Guardian", "hp": 12, "max_hp": 12, "atk": 5, "mdef": 1, "is_boss": false, "loot": []}
+      ],
+      "npcs": [],
+      "items": []
+    },
+    {
+      "id": "room_11",
+      "name": "Temple Antechamber",
+      "description": "Massive stone doors carved with coiling serpents stand ajar, revealing a columned hall slick with moisture and green bioluminescent mold. Braziers of cold green fire line the walls, casting writhing shadows. The hiss of something vast echoes from deeper within.",
+      "exits": {"s": "room_10", "n": "room_12"},
+      "mobs": [
+        {"name": "Naga Temple Guard", "hp": 14, "max_hp": 14, "atk": 5, "mdef": 2, "is_boss": false, "loot": [
+          {"name": "Serpent Scale Mail", "slot": "armor", "atk": 0, "pdef": 5, "mdef": 2, "mdmg": 0}
+        ]}
+      ],
+      "npcs": [],
+      "items": [
+        {"name": "Swamp Emerald Ring", "slot": "ring", "atk": 0, "pdef": 0, "mdef": 3, "mdmg": 6}
+      ]
+    },
+    {
+      "id": "room_12",
+      "name": "Sunken Temple",
+      "description": "A vast domed chamber half-filled with dark water, its ceiling painted with faded murals of a serpent goddess devouring the sun. At the center, coiled atop a raised altar of black stone, the Naga Sorceress Ssythara surveys her domain with cold reptilian eyes. Green lightning crackles between her clawed fingers, and the water around the altar churns with unnatural currents.",
+      "exits": {"s": "room_11"},
+      "mobs": [
+        {"name": "Naga Sorceress Ssythara", "hp": 26, "max_hp": 26, "atk": 5, "mdef": 3, "is_boss": true, "loot": []}
+      ],
+      "npcs": [],
+      "items": []
+    }
+  ]
+}

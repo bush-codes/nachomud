@@ -1,4 +1,5 @@
 import React from "react";
+import { WorldInfo } from "../types";
 
 const OLLAMA_MODELS = [
   "gemma3:4b",
@@ -18,6 +19,9 @@ interface GameHeaderProps {
   currentTick: number;
   maxTicks: number;
   agentModel: string;
+  worlds: WorldInfo[];
+  selectedWorld: string;
+  onWorldChange: (value: string) => void;
   onMaxTicksChange: (value: number) => void;
   onAgentModelChange: (value: string) => void;
   onRunSimulation: () => void;
@@ -32,7 +36,7 @@ const BADGE_STYLES: Record<string, string> = {
   idle: "bg-gray-700 text-gray-300",
 };
 
-export default function GameHeader({ outcome, loading, currentTick, maxTicks, agentModel, onMaxTicksChange, onAgentModelChange, onRunSimulation, onResetSimulation }: GameHeaderProps) {
+export default function GameHeader({ outcome, loading, currentTick, maxTicks, agentModel, worlds, selectedWorld, onWorldChange, onMaxTicksChange, onAgentModelChange, onRunSimulation, onResetSimulation }: GameHeaderProps) {
   let status: string;
   let badgeStyle: string;
 
@@ -64,6 +68,21 @@ export default function GameHeader({ outcome, loading, currentTick, maxTicks, ag
         )}
       </div>
       <div className="flex items-center gap-2 sm:gap-3">
+        {worlds.length > 0 && (
+          <label className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-400">
+            World
+            <select
+              value={selectedWorld}
+              onChange={(e) => onWorldChange(e.target.value)}
+              disabled={loading}
+              className="px-1.5 py-1 sm:py-1.5 bg-gray-800 border border-gray-700 rounded text-gray-200 text-xs sm:text-sm disabled:opacity-50"
+            >
+              {worlds.map((w) => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-400">
           Model
           <select

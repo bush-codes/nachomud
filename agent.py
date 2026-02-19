@@ -3,124 +3,202 @@ from __future__ import annotations
 import logging
 
 import config
-from config import ACTION_HISTORY_SIZE, BASE_PERSONALITY, SPELL_COSTS
+from config import ACTION_HISTORY_SIZE, BASE_PERSONALITY, COMM_HISTORY_SIZE, LORE_HISTORY_SIZE, SPELL_COSTS
 from llm import chat
 from models import AgentState, Room
 
 log = logging.getLogger("nachomud")
 
-COMMANDS_HELP = """Commands:
-  n / s / e / w         - Move in a direction
-  attack <enemy>        - Melee attack an enemy (weapon ATK)
-  missile <enemy>       - Magic missile an enemy (1 MP, ring MDMG)
-  fireball              - AoE all enemies in room (3 MP, ring MDMG x2)
-  poison <enemy>        - Poison an enemy: 1 dmg/tick, 3 ticks (2 MP)
-  heal [ally]           - Restore 30% max HP (2 MP, heals self if no target)
-  get <item>            - Pick up item (auto-equips if better)
-  tell <name> <msg>     - Speak to a specific NPC or ally
+def _build_commands_help(agent: AgentState, room: Room) -> str:
+    """Build dynamic commands list showing only what's currently possible."""
+    lines = ["Available actions:"]
 
-Target rules:
-  Enemies → attack, missile, fireball, poison
-  Allies (party members) → heal, tell
-  NPCs → tell only (cannot attack or heal NPCs)
-  Items → get only"""
+    # Movement — only show exits that exist
+    dir_names = {"n": "north", "s": "south", "e": "east", "w": "west"}
+    for d in ("n", "s", "e", "w"):
+        if d in room.exits:
+            lines.append(f"  {d} — Move {dir_names[d]}")
+
+    # Combat — only show if enemies present
+    living_mobs = [m for m in room.mobs if m.hp > 0]
+    if living_mobs:
+        lines.append("  attack <enemy> — Melee attack (weapon ATK)")
+        if agent.mp >= SPELL_COSTS["missile"]:
+            lines.append("  missile <enemy> — Magic missile (1 MP, ring MDMG)")
+        if agent.mp >= SPELL_COSTS["fireball"]:
+            lines.append("  fireball — AoE all enemies (3 MP, ring MDMG x2)")
+        if agent.mp >= SPELL_COSTS["poison"]:
+            lines.append("  poison <enemy> — Poison: 1 dmg/tick, 3 ticks (2 MP)")
+
+    # Healing — only show if affordable
+    if agent.mp >= SPELL_COSTS["heal"]:
+        lines.append("  heal [ally] — Restore 30% max HP (2 MP)")
+
+    # Items — only show if items on ground
+    if room.items:
+        lines.append("  get <item> — Pick up item (auto-equips if better)")
+
+    # NPC interaction — only show if NPCs with dialogue remain
+    if any(n.interactions_left > 0 for n in room.npcs):
+        lines.append("  tell <NPC> <message> — Talk to an NPC")
+
+    return "\n".join(lines)
 
 
-def build_discussion_prompt(agent: AgentState, sensory: str, allies: list[str], discussion_so_far: list[str]) -> str:
-    last_action_line = ""
-    if agent.last_action:
-        last_action_line = f"\nYour last action: {agent.last_action}"
-        if agent.last_result:
-            last_action_line += f"\nResult: {agent.last_result}"
+def build_comm_prompt(agent: AgentState, sensory: str, allies_here: list[str]) -> str:
+    """Build the communication phase prompt (before action phase)."""
+    history_block = ""
+    if agent.action_history:
+        recent = agent.action_history[-ACTION_HISTORY_SIZE:]
+        history_block += "\n=== RECENT EVENTS ===\n" + "\n".join(f"- {h}" for h in recent)
+    if agent.comm_history:
+        recent_comm = agent.comm_history[-COMM_HISTORY_SIZE:]
+        history_block += "\n=== ALLY COMMUNICATIONS ===\n" + "\n".join(f"- {h}" for h in recent_comm)
+    if agent.lore_history:
+        recent_lore = agent.lore_history[-LORE_HISTORY_SIZE:]
+        history_block += "\n=== NPC LORE ===\n" + "\n".join(f"- {h}" for h in recent_lore)
 
-    discussion_block = ""
-    if discussion_so_far:
-        discussion_block = "\n=== DISCUSSION THIS TURN ===\n" + "\n".join(discussion_so_far)
+    comm_options = []
+    if allies_here:
+        for ally in allies_here:
+            comm_options.append(f"tell {ally} <message>")
+            comm_options.append(f"whisper {ally} <message>")
+        comm_options.append("say <message>")
+    comm_options.append("yell <message> — broadcast to nearby rooms, no target needed")
+    comm_options.append("none — stay silent")
+    options_block = "\n".join(f"  {o}" for o in comm_options)
 
     prompt = f"""You are {agent.name} the {agent.agent_class}.
 {BASE_PERSONALITY} {agent.personality}
 
-Your quest: navigate the Durnhollow fortress with your allies, reach the Shadowfell Rift, and close it by defeating the final boss.
-
 HP: {agent.hp}/{agent.max_hp} | MP: {agent.mp}/{agent.max_mp}
-{last_action_line}
 
 === WHAT YOU SEE ===
 {sensory}
-{discussion_block}
+{history_block}
 
-{COMMANDS_HELP}
+Before acting, you may communicate with allies. Say "none" if nothing important.
+Commands:
+{options_block}
 
-{"You are alone here. Think out loud about your situation and what you should do. Being separated from allies is dangerous." if not allies else "You are discussing strategy with your allies before acting."} Consider enemies to fight, items to pick up, NPCs to talk to, and exits to explore. Picking up items automatically equips them if they are better than your current gear. What should {"you" if not allies else "the group"} do next? Speak in character in 1-2 short sentences."""
+Think: <what's worth communicating?>
+Comm: <command or "none">"""
 
     return prompt
 
 
-def get_agent_discussion(agent: AgentState, sensory: str, allies: list[str], discussion_so_far: list[str]) -> str:
-    prompt = build_discussion_prompt(agent, sensory, allies, discussion_so_far)
+def get_agent_comm(
+    agent: AgentState, sensory: str, allies_here: list[str],
+    room: Room | None = None, allies: list[AgentState] | None = None,
+) -> tuple[str, str | None]:
+    """Get optional communication from agent. Returns (think, comm_action_or_None)."""
+    prompt = build_comm_prompt(agent, sensory, allies_here)
+    system = f"You are {agent.name} the {agent.agent_class}. Decide if you need to communicate with allies before acting. Say 'none' if nothing important to share."
 
-    raw = chat(
-        system=f"You are {agent.name} the {agent.agent_class}. Speak in character in 1-2 sentences about what the group should do next. Consider everything you see: enemies to fight, items on the ground to pick up, NPCs to talk to, and exits to explore.",
-        message=prompt,
-        model=config.AGENT_MODEL,
-        max_tokens=100,
-    )
-    utterance = raw.strip().split("\n")[0].strip()
-    return utterance
+    raw = chat(system=system, message=prompt, model=config.AGENT_MODEL, max_tokens=150)
+    think, comm = _parse_think_comm(raw)
+
+    if comm is None:
+        return think, None
+
+    # Validate: only ally communication commands allowed
+    if room is not None and allies is not None:
+        cmd, arg = parse_action(comm)
+        if not _is_valid_comm(cmd, arg, agent, room, allies):
+            log.info("Comm invalid for %s: '%s' — skipping", agent.name, comm)
+            return think, None
+
+    return think, comm
 
 
-def build_action_prompt(agent: AgentState, sensory: str, round0_plan: list[str] | None = None) -> str:
+def _parse_think_comm(raw: str) -> tuple[str, str | None]:
+    """Extract think and comm from LLM response.
+
+    Handles multi-line think content: everything between Think: and Comm:
+    is captured as the think string.
+    """
+    think_lines: list[str] = []
+    comm = None
+    in_think = False
+    for line in raw.strip().split("\n"):
+        stripped = line.strip()
+        if stripped.lower().startswith("think:"):
+            in_think = True
+            rest = stripped[6:].strip()
+            if rest:
+                think_lines.append(rest)
+        elif stripped.lower().startswith("comm:"):
+            in_think = False
+            comm = stripped[5:].strip()
+        elif in_think and stripped:
+            think_lines.append(stripped)
+
+    think = " ".join(think_lines)
+
+    # Fallback: if no Comm: found, take the last non-empty line
+    if comm is None:
+        for line in reversed(raw.strip().split("\n")):
+            line = line.strip()
+            if line and not line.lower().startswith("think:"):
+                comm = line
+                break
+
+    # Normalize "none" variants
+    if comm and comm.lower().strip().rstrip(".!") in ("none", "silent", "nothing", "pass", "stay silent", "no"):
+        comm = None
+
+    return think, comm
+
+
+def _is_valid_comm(cmd: str, arg: str, agent: AgentState, room: Room, allies: list[AgentState]) -> bool:
+    """Check if a comm action is valid (ally-only communication)."""
+    if cmd == "say":
+        return bool(arg)
+    if cmd == "yell":
+        return bool(arg)
+    if cmd in ("tell", "talk"):
+        target = arg.split(None, 1)[0].lower() if arg else ""
+        if not target:
+            return False
+        return any(a.alive and a.room_id == agent.room_id and a.name != agent.name and target in a.name.lower() for a in allies)
+    if cmd == "whisper":
+        target = arg.split(None, 1)[0].lower() if arg else ""
+        if not target:
+            return False
+        return any(a.alive and a.room_id == agent.room_id and a.name != agent.name and target in a.name.lower() for a in allies)
+    return False
+
+
+def build_action_prompt(agent: AgentState, sensory: str, room: Room | None = None) -> str:
     history_block = ""
     if agent.action_history:
         recent = agent.action_history[-ACTION_HISTORY_SIZE:]
-        # Count consecutive failures from the end (only for this agent's own actions)
-        fail_markers = ("No enemy", "already dead", "No enemies", "No living mob",
-                        "No one named", "Not enough MP", "Unknown command",
-                        "No item named", "No ally named", "No exit", "not an enemy",
-                        "is an item", "is your ally", "is an NPC", "is an enemy")
-        own_actions = [e for e in recent if e.startswith(">>")]
-        streak = 0
-        for entry in reversed(own_actions):
-            if any(m in entry for m in fail_markers):
-                streak += 1
-            else:
-                break
-        streak_line = f"WARNING: Your last {streak} actions failed.\n" if streak >= 2 else ""
-        history_block = "\n=== RECENT EVENTS (what you witnessed) ===\n" + streak_line + "\n".join(f"- {h}" for h in recent)
+        history_block += "\n=== RECENT EVENTS ===\n" + "\n".join(f"- {h}" for h in recent)
+    if agent.comm_history:
+        recent_comm = agent.comm_history[-COMM_HISTORY_SIZE:]
+        history_block += "\n=== ALLY COMMUNICATIONS ===\n" + "\n".join(f"- {h}" for h in recent_comm)
+    if agent.lore_history:
+        recent_lore = agent.lore_history[-LORE_HISTORY_SIZE:]
+        history_block += "\n=== NPC LORE ===\n" + "\n".join(f"- {h}" for h in recent_lore)
 
-    plan_block = ""
-    if round0_plan:
-        plan_block = "\n=== PARTY PLAN (from before entering) ===\n" + "\n".join(f"- {p}" for p in round0_plan)
-
-    # Build conditional warnings
-    warnings = []
-    if agent.hp >= agent.max_hp:
-        warnings.append("You are at full HP — healing would be wasted.")
-    unavailable = [f"{spell} ({cost} MP)" for spell, cost in SPELL_COSTS.items() if agent.mp < cost]
-    if unavailable:
-        warnings.append(f"Not enough MP for: {', '.join(unavailable)}.")
-    warning_block = "\n".join(warnings)
+    # Dynamic commands based on current state
+    commands_help = _build_commands_help(agent, room) if room else ""
 
     prompt = f"""You are {agent.name} the {agent.agent_class}.
 {BASE_PERSONALITY} {agent.personality}
 
-Your quest: navigate the Durnhollow fortress with your allies, reach the Shadowfell Rift, and close it by defeating the final boss.
+Your quest: {config.QUEST_DESCRIPTION}
 
 === YOUR EQUIPMENT ===
 Weapon: {agent.weapon.name} (ATK:{agent.weapon.atk}) | Armor: {agent.armor.name} (PDEF:{agent.armor.pdef}) | Ring: {agent.ring.name} (MDMG:{agent.ring.mdmg})
 HP: {agent.hp}/{agent.max_hp} | MP: {agent.mp}/{agent.max_mp}
-{warning_block}
-{plan_block}
 {history_block}
 
 === WHAT YOU SEE ===
 {sensory}
 
-{COMMANDS_HELP}
+{commands_help}
 
-You MUST take a real game action — move, attack, cast a spell, pick up an item, or talk to an NPC. You can ONLY target enemies, items, and NPCs in YOUR current room. To reach things in nearby rooms, move there first.
-
-First think about your situation in 1 sentence, then give your command.
 Think: <your reasoning>
 Do: <your command>"""
 
@@ -166,11 +244,6 @@ def build_valid_actions(agent: AgentState, room: Room, allies: list[AgentState])
         if npc.interactions_left > 0:
             actions.append(f"tell {npc.name} <message>")
 
-    # Ally communication
-    for a in allies:
-        if a.alive and a.room_id == agent.room_id and a.name != agent.name:
-            actions.append(f"tell {a.name} <message>")
-
     return actions
 
 
@@ -186,15 +259,28 @@ Do: <your command>"""
 
 
 def _parse_think_do(raw: str) -> tuple[str, str]:
-    """Extract think and action from LLM response."""
-    think = ""
+    """Extract think and action from LLM response.
+
+    Handles multi-line think content: everything between Think: and Do:
+    is captured as the think string.
+    """
+    think_lines: list[str] = []
     action = ""
+    in_think = False
     for line in raw.strip().split("\n"):
-        line = line.strip()
-        if line.lower().startswith("think:"):
-            think = line[6:].strip()
-        elif line.lower().startswith("do:"):
-            action = line[3:].strip()
+        stripped = line.strip()
+        if stripped.lower().startswith("think:"):
+            in_think = True
+            rest = stripped[6:].strip()
+            if rest:
+                think_lines.append(rest)
+        elif stripped.lower().startswith("do:"):
+            in_think = False
+            action = stripped[3:].strip()
+        elif in_think and stripped:
+            think_lines.append(stripped)
+
+    think = " ".join(think_lines)
 
     # Fallback: if no "Do:" found, take the last non-empty line
     if not action:
@@ -254,7 +340,16 @@ def _is_valid_action(cmd: str, arg: str, room: Room, agent: AgentState, allies: 
         return any(a.alive and a.room_id == agent.room_id and a.name != agent.name and target in a.name.lower() for a in allies)
 
     if cmd == "say":
-        return True
+        return bool(arg)
+
+    if cmd == "whisper":
+        target = arg.split(None, 1)[0].lower() if arg else ""
+        if not target:
+            return False
+        return any(a.alive and a.room_id == agent.room_id and a.name != agent.name and target in a.name.lower() for a in allies)
+
+    if cmd == "yell":
+        return bool(arg)
 
     return False
 
@@ -262,10 +357,9 @@ def _is_valid_action(cmd: str, arg: str, room: Room, agent: AgentState, allies: 
 def get_agent_action(
     agent: AgentState, sensory: str,
     room: Room | None = None, allies: list[AgentState] | None = None,
-    round0_plan: list[str] | None = None,
 ) -> tuple[str, str, list[str]]:
     """Returns (think, action, retries) tuple. retries is a list of invalid action strings that were rejected."""
-    prompt = build_action_prompt(agent, sensory, round0_plan=round0_plan)
+    prompt = build_action_prompt(agent, sensory, room=room)
     system = f"You are {agent.name} the {agent.agent_class} in a dungeon crawler. Think briefly about your situation, then output your command after 'Do:'."
 
     raw = chat(system=system, message=prompt, model=config.AGENT_MODEL, max_tokens=150)

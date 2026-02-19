@@ -1,3 +1,9 @@
+export interface WorldInfo {
+  id: string;
+  name: string;
+  description: string;
+}
+
 export interface Item {
   name: string;
   slot: string;

@@ -1,6 +1,6 @@
 # NachoMUD
 
-An AI-powered text-based dungeon crawler where Claude-controlled agents cooperate to descend through the Durnhollow fortress, battle monsters, and close the Shadowfell Rift.
+An AI-powered text-based dungeon crawler where LLM-controlled agents cooperate to navigate dungeons, battle monsters, and defeat final bosses. Features multiple worlds with different topologies to test agent generalization.
 
 ## Background: From Neuroevolution to Large Language Models
 
@@ -98,32 +98,37 @@ The game uses **Claude** or local LLMs via **Ollama** to power real-time decisio
 ## Features
 
 - **AI-Driven Agents**: Three autonomous characters (Kael the Warrior, Lyria the Mage, Finn the Ranger) make strategic decisions using Claude or local LLMs via Ollama
-- **Round-0 Planning + Action Phases**: Agents discuss strategy once before tick 1, then each tick they act based on what they've personally witnessed (room-scoped, like a MUD scrollback)
+- **Communication + Action Phases**: Each tick has a free communication phase (say/tell/whisper/yell without consuming their action) followed by an action phase, all based on what they've personally witnessed (room-scoped, like a MUD scrollback)
 - **Witnessed Events Model**: Agents only know what they've seen in their room -- no global information leaking. Own actions prefixed with `>>`, others' actions observed naturally, arrivals/departures tracked
-- **Action Validation & Retry**: Invalid actions are caught and the model is re-prompted with a dynamic valid-actions list, forcing deliberation over real options
+- **Dynamic Commands & Retry**: Action prompts only show commands relevant to the current state (available exits, affordable spells, enemies present). Invalid actions trigger a retry with a valid-actions list
 - **Sensory Awareness**: Agents see their current room contents and exit names, eliminating the need for explicit "look" commands
 - **Real-Time Combat System**: Attack, magic spells (missile, fireball, poison), healing, and item management with rich failure messages
 - **Procedural Narration**: LLM-generated story narration for combat and dialogue
-- **Dynamic World**: 15-room fortress with NPCs, loot, and escalating mob difficulty
-- **Cooperative Gameplay**: Agents coordinate through witnessed actions and room-scoped awareness
+- **Multiple Worlds**: 4 hand-crafted dungeons with different topologies (linear, hub-and-spoke, ring/loop, wide branching) to test agent generalization
+- **Dynamic World**: NPCs, loot, and escalating mob difficulty in each world
+- **Cooperative Gameplay**: Agents coordinate through a dedicated communication phase each tick (warnings, requests, intel) plus witnessed actions and room-scoped awareness
 - **Web Visualization**: Real-time streaming UI with live events, dungeon map, agent panels, and simulation controls
 
 ## Project Structure
 
 ```
 nachomud/
-├── main.py              # CLI game loop (10 ticks default)
-├── agent.py             # LLM prompting: round-0 planning, action phase, retry validation
+├── main.py              # CLI game loop (20 ticks default)
+├── agent.py             # LLM prompting: comm phase, action phase, dynamic commands, retry
 ├── llm.py               # LLM abstraction (Anthropic SDK or Ollama)
 ├── combat.py            # Damage resolution: attack, missile, fireball, poison, heal
-├── world.py             # Room loading, sensory context building
+├── world.py             # Room loading, world listing, sensory context building
 ├── narrator.py          # LLM-powered story narration (room descriptions, combat flavor)
 ├── models.py            # Dataclasses: Item, Mob, NPC, Room, AgentState, GameEvent
 ├── config.py            # Agent templates (3 agents), spell costs, LLM_BACKEND, MAX_TICKS
 ├── run.sh               # Launch script (Ollama + backend + frontend)
 ├── requirements.txt     # Python dependencies
 ├── data/
-│   ├── world.json       # 15-room dungeon definition (mobs, NPCs, items, exits)
+│   ├── worlds/          # World JSON files (one per dungeon)
+│   │   ├── shadowfell.json    # 15-room linear fortress (original)
+│   │   ├── frostpeak.json     # 13-room hub-and-spoke frozen citadel
+│   │   ├── serpentmire.json   # 12-room ring/loop swamp
+│   │   └── emberhollows.json  # 14-room wide branching volcanic caverns
 │   └── logs/            # Simulation transcripts (auto-generated)
 ├── web/                     # Web visualization
 │   ├── backend/
@@ -133,8 +138,8 @@ nachomud/
 │           ├── App.tsx           # Main component: streaming state management
 │           ├── types.ts          # TS interfaces matching backend models
 │           └── components/
-│               ├── GameHeader.tsx   # Status badge, Run/Reset buttons
-│               ├── DungeonMap.tsx   # SVG map with agent dots, room states
+│               ├── GameHeader.tsx   # Status badge, World/Model selectors, Run/Reset
+│               ├── DungeonMap.tsx   # SVG map with auto-layout, agent dots, room states
 │               ├── AgentPanel.tsx   # HP/MP bars, equipment, last action
 │               └── EventLog.tsx     # Color-coded live event stream
 └── neatMUD/                 # Legacy research codebase (2007-2009)
@@ -200,7 +205,7 @@ LLM_BACKEND=anthropic ./run.sh
 python main.py
 ```
 
-The simulation will run for up to 10 ticks (turns), with each agent deciding their action based on what they've witnessed. Watch as the AI-controlled party descends through the fortress!
+The simulation will run for up to 20 ticks (turns). Each tick, agents first communicate (warnings, coordination, intel), then act based on what they've witnessed. Watch as the AI-controlled party explores the dungeon!
 
 ### Local LLM (Ollama)
 
@@ -301,8 +306,20 @@ The Vite dev server proxies API requests to the backend automatically.
 
 - `n / s / e / w` - Move in cardinal directions
 - `get <item>` - Pick up loot (auto-equips if better)
-- `tell <name> <msg>` - Speak to an NPC or ally
+
+### Communication
+
+Each tick begins with a **free communication phase** where agents can talk without consuming their action:
+
+- `tell <name> <msg>` - Speak to an NPC or ally (everyone in room hears)
 - `say <message>` - Speak to everyone in the room
+- `whisper <ally> <msg>` - Private message to an ally (only they hear)
+- `yell <message>` - Shout heard up to 3 rooms away (distance-dependent text)
+- `none` - Stay silent (nothing important to share)
+
+During the comm phase, only ally communication is allowed (no NPC tells — those stay in the action phase). Agents communicate sequentially, so later agents see what earlier agents said before deciding what to share.
+
+Yell distance: same room hears normally, adjacent rooms hear "from the north (Room Name)", 2-3 rooms away hear "in the distance".
 
 Agents see their current room contents and exit names, so there is no `look` command -- they always know what's in their room.
 
@@ -325,13 +342,18 @@ Edit `config.py` to customize:
 - `POISON_DURATION` / `POISON_DAMAGE`: Status effect parameters
 - `NARRATOR_MODEL` / `AGENT_MODEL`: Claude model versions to use
 
-## World Data
+## Worlds
 
-The dungeon layout, encounters, and items are defined in `data/world.json`. Each room can contain:
-- NPCs with dialogue
-- Mobs with varying difficulty
-- Loot items
-- Connections to adjacent rooms
+NachoMUD ships with 4 hand-crafted worlds, each with a distinct topology designed to test different aspects of agent cooperation:
+
+| World | Rooms | Topology | Boss |
+|---|---|---|---|
+| **Shadowfell Rift** | 15 | Linear with side branches | Void Lord Malachar |
+| **Frostpeak Citadel** | 13 | Hub-and-spoke (3 wings from central hall) | Frost Titan Valdris |
+| **The Serpent's Mire** | 12 | Ring/loop (multiple routes to boss) | Naga Sorceress Ssythara |
+| **The Ember Hollows** | 14 | Wide branching tree (split/reconverge) | Magma Drake Pyraxis |
+
+World files live in `data/worlds/` as JSON. Each file contains a `meta` block (name, description) and a `rooms` array. To add a new world, create a JSON file in `data/worlds/` — it will automatically appear in the UI's world selector dropdown.
 
 Simulation logs are written to `data/logs/` for each run.
 

@@ -64,7 +64,10 @@ class AgentState:
     inventory: list[Item] = field(default_factory=list)
     last_action: str = ""
     last_result: str = ""
-    action_history: list[str] = field(default_factory=list)  # rolling window of recent actions+results
+    action_history: list[str] = field(default_factory=list)  # tactical events: combat, movement, items
+    comm_history: list[str] = field(default_factory=list)    # ally communications: tell, say, whisper, yell
+    lore_history: list[str] = field(default_factory=list)    # NPC dialogue summaries
+    visited_rooms: list[str] = field(default_factory=list)   # room names in order of first visit
 
 
 @dataclass
@@ -74,3 +77,5 @@ class GameEvent:
     action: str
     result: str
     room_id: str
+    witness_text: str = ""  # shortened version for action_history (e.g., summarized NPC dialogue)
+    category: str = "action"  # "action" (combat/movement/items), "comm" (ally talk), "lore" (NPC dialogue)
