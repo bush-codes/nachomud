@@ -14,7 +14,7 @@ export default function App() {
   const [latestAgentStates, setLatestAgentStates] = useState<AgentSnapshot[]>([]);
   const [latestRoomStates, setLatestRoomStates] = useState<Record<string, RoomSnapshot>>({});
   const [maxTicks, setMaxTicks] = useState(10);
-  const [agentModel, setAgentModel] = useState("gemma3:4b");
+  const [agentModel, setAgentModel] = useState("gemma3:12b");
   const [currentTick, setCurrentTick] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
