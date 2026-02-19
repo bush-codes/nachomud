@@ -1,8 +1,8 @@
 import React from "react";
 
 const OLLAMA_MODELS = [
-  "gemma3:12b",
   "gemma3:4b",
+  "gemma3:12b",
   "qwen2.5:7b",
   "llama3.1:8b",
   "gemma2:9b",

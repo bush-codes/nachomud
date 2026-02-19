@@ -6,13 +6,13 @@ LLM_BACKEND = os.environ.get("LLM_BACKEND", "ollama")  # "anthropic" or "ollama"
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 
 if LLM_BACKEND == "ollama":
-    AGENT_MODEL = os.environ.get("AGENT_MODEL", "gemma3:12b")
-    NARRATOR_MODEL = os.environ.get("NARRATOR_MODEL", "gemma3:12b")
+    AGENT_MODEL = os.environ.get("AGENT_MODEL", "gemma3:4b")
+    NARRATOR_MODEL = os.environ.get("NARRATOR_MODEL", "gemma3:4b")
 else:
     AGENT_MODEL = os.environ.get("AGENT_MODEL", "claude-sonnet-4-20250514")
     NARRATOR_MODEL = os.environ.get("NARRATOR_MODEL", "claude-sonnet-4-20250514")
 
-MAX_TICKS = 10
+MAX_TICKS = 20
 NUM_AGENTS = 3
 ACTION_HISTORY_SIZE = 15  # rolling window of witnessed events shown to each agent
 

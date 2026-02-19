@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 
-from config import ACTION_HISTORY_SIZE, AGENT_MODEL, BASE_PERSONALITY, SPELL_COSTS
+import config
+from config import ACTION_HISTORY_SIZE, BASE_PERSONALITY, SPELL_COSTS
 from llm import chat
 from models import AgentState, Room
 
@@ -61,7 +62,7 @@ def get_agent_discussion(agent: AgentState, sensory: str, allies: list[str], dis
     raw = chat(
         system=f"You are {agent.name} the {agent.agent_class}. Speak in character in 1-2 sentences about what the group should do next. Consider everything you see: enemies to fight, items on the ground to pick up, NPCs to talk to, and exits to explore.",
         message=prompt,
-        model=AGENT_MODEL,
+        model=config.AGENT_MODEL,
         max_tokens=100,
     )
     utterance = raw.strip().split("\n")[0].strip()
@@ -267,7 +268,7 @@ def get_agent_action(
     prompt = build_action_prompt(agent, sensory, round0_plan=round0_plan)
     system = f"You are {agent.name} the {agent.agent_class} in a dungeon crawler. Think briefly about your situation, then output your command after 'Do:'."
 
-    raw = chat(system=system, message=prompt, model=AGENT_MODEL, max_tokens=150)
+    raw = chat(system=system, message=prompt, model=config.AGENT_MODEL, max_tokens=150)
     think, action = _parse_think_do(raw)
     retries: list[str] = []
 
@@ -284,7 +285,7 @@ def get_agent_action(
             retries.append(action)
             log.info("Retry %d/%d for %s: '%s' invalid. Valid: %s", attempt + 1, MAX_RETRIES, agent.name, action, valid_actions)
             retry_prompt = build_retry_prompt(agent, action, valid_actions)
-            raw = chat(system=system, message=retry_prompt, model=AGENT_MODEL, max_tokens=200)
+            raw = chat(system=system, message=retry_prompt, model=config.AGENT_MODEL, max_tokens=200)
             think, action = _parse_think_do(raw)
             cmd, arg = parse_action(action)
 
