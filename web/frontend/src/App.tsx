@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { SimulationResult, AgentSnapshot, GameEventData, RoomInfo, RoomSnapshot, WorldInfo } from "./types";
+import { SimulationResult, AgentSnapshot, GameEventData, RoomInfo, RoomSnapshot, WorldInfo, ClassDefinition } from "./types";
 import GameHeader from "./components/GameHeader";
 import DungeonMap from "./components/DungeonMap";
 import AgentPanel from "./components/AgentPanel";
 import EventLog from "./components/EventLog";
+import PartySelector from "./components/PartySelector";
 
 export default function App() {
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
@@ -24,6 +25,8 @@ export default function App() {
   ];
   const [worlds, setWorlds] = useState<WorldInfo[]>(DEFAULT_WORLDS);
   const [selectedWorld, setSelectedWorld] = useState("shadowfell");
+  const [party, setParty] = useState<string[]>(["Warrior", "Mage", "Ranger"]);
+  const [classDefinitions, setClassDefinitions] = useState<Record<string, ClassDefinition>>({});
   const abortRef = useRef<AbortController | null>(null);
 
   // Changing the world resets any completed/running simulation so the new map shows
@@ -41,11 +44,15 @@ export default function App() {
     setCurrentTick(0);
   }, []);
 
-  // Load available worlds on mount
+  // Load available worlds and class definitions on mount
   useEffect(() => {
     fetch("/api/worlds")
       .then((res) => res.json())
       .then((data: WorldInfo[]) => setWorlds(data))
+      .catch(() => {});
+    fetch("/api/classes")
+      .then((res) => res.json())
+      .then((data: Record<string, ClassDefinition>) => setClassDefinitions(data))
       .catch(() => {});
   }, []);
 
@@ -88,7 +95,8 @@ export default function App() {
     setCurrentTick(0);
 
     try {
-      const res = await fetch(`/api/simulate?max_ticks=${maxTicks}&agent_model=${encodeURIComponent(agentModel)}&world_id=${encodeURIComponent(selectedWorld)}`, { method: "POST", signal: controller.signal });
+      const partyParam = party.length > 0 ? `&party=${encodeURIComponent(party.join(","))}` : "";
+      const res = await fetch(`/api/simulate?max_ticks=${maxTicks}&agent_model=${encodeURIComponent(agentModel)}&world_id=${encodeURIComponent(selectedWorld)}${partyParam}`, { method: "POST", signal: controller.signal });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.detail || `Server error: ${res.status}`);
@@ -170,7 +178,7 @@ export default function App() {
       abortRef.current = null;
       setLoading(false);
     }
-  }, [maxTicks, agentModel, selectedWorld]);
+  }, [maxTicks, agentModel, selectedWorld, party]);
 
   // Derive agent states: use latest from stream, or fall back to initial agent info
   const agentStates: AgentSnapshot[] = latestAgentStates.length > 0
@@ -178,10 +186,14 @@ export default function App() {
     : simulation
       ? simulation.agents.map((a) => ({
           name: a.name,
+          agent_class: a.agent_class,
           hp: a.max_hp,
           max_hp: a.max_hp,
           mp: a.max_mp,
           max_mp: a.max_mp,
+          ap: 0,
+          max_ap: 0,
+          speed: 3,
           room_id: "room_1",
           alive: true,
           weapon: a.weapon,
@@ -189,6 +201,7 @@ export default function App() {
           ring: a.ring,
           last_action: "",
           last_result: "",
+          status_effects: [],
         }))
       : [];
 
@@ -210,6 +223,14 @@ export default function App() {
         onRunSimulation={runSimulation}
         onResetSimulation={resetSimulation}
       />
+
+      {!simulation && !loading && Object.keys(classDefinitions).length > 0 && (
+        <PartySelector
+          classDefinitions={classDefinitions}
+          party={party}
+          onPartyChange={setParty}
+        />
+      )}
 
       {error && (
         <div className="mx-2 sm:mx-4 mt-2 px-3 sm:px-4 py-2 sm:py-3 bg-red-900/50 border border-red-700 rounded-lg text-red-200 text-sm">

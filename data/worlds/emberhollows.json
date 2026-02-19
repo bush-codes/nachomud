@@ -10,7 +10,7 @@
       "description": "Splintered timber frames the mouth of an old dwarven mine shaft, heat rolling outward in waves. Soot-blackened rails run into the darkness, and the stone underfoot trembles with a distant, rhythmic rumble.",
       "exits": {"n": "room_2"},
       "mobs": [
-        {"name": "Ember Rat", "hp": 3, "max_hp": 3, "atk": 1, "mdef": 0, "is_boss": false, "loot": []}
+        {"name": "Ember Rat", "hp": 3, "max_hp": 3, "atk": 1, "pdef": 0, "mdef": 0, "speed": 2, "abilities": ["attack"], "personality": "Skittish scavenger that bites and flees.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": [
@@ -23,8 +23,8 @@
       "description": "The ceiling has partially caved in, leaving a narrow passage choked with rubble and dust. Broken mine carts lie on their sides, and the air tastes of copper and ash. Passages branch east and west through gaps in the fallen stone.",
       "exits": {"s": "room_1", "w": "room_3", "e": "room_4"},
       "mobs": [
-        {"name": "Cave Beetle", "hp": 4, "max_hp": 4, "atk": 2, "mdef": 0, "is_boss": false, "loot": []},
-        {"name": "Cave Beetle", "hp": 4, "max_hp": 4, "atk": 2, "mdef": 0, "is_boss": false, "loot": []}
+        {"name": "Cave Beetle", "hp": 4, "max_hp": 4, "atk": 2, "pdef": 1, "mdef": 0, "speed": 2, "abilities": ["attack"], "personality": "Armored insect that charges head-down.", "is_boss": false, "loot": []},
+        {"name": "Cave Beetle", "hp": 4, "max_hp": 4, "atk": 2, "pdef": 1, "mdef": 0, "speed": 2, "abilities": ["attack"], "personality": "Armored insect that charges head-down.", "is_boss": false, "loot": []}
       ],
       "npcs": [
         {
@@ -42,7 +42,7 @@
       "description": "A natural lava tube stretches ahead, its walls glazed smooth and black like obsidian. Veins of molten rock pulse in the cracks, casting everything in a hellish orange glow. The heat is nearly unbearable.",
       "exits": {"e": "room_2", "n": "room_5"},
       "mobs": [
-        {"name": "Magma Slime", "hp": 5, "max_hp": 5, "atk": 2, "mdef": 1, "is_boss": false, "loot": []}
+        {"name": "Magma Slime", "hp": 5, "max_hp": 5, "atk": 2, "pdef": 0, "mdef": 1, "speed": 2, "abilities": ["attack"], "personality": "Slow-moving blob that absorbs blows and burns on contact.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": []
@@ -53,7 +53,7 @@
       "description": "A vertical mine shaft has been converted into a descending stairway, iron rungs hammered into the rock face. Phosphorescent fungus clings to the walls, and cool air drifts up from below, a welcome relief from the heat above.",
       "exits": {"w": "room_2", "n": "room_6"},
       "mobs": [
-        {"name": "Ash Goblin", "hp": 5, "max_hp": 5, "atk": 3, "mdef": 0, "is_boss": false, "loot": [
+        {"name": "Ash Goblin", "hp": 5, "max_hp": 5, "atk": 3, "pdef": 1, "mdef": 0, "speed": 3, "abilities": ["attack"], "personality": "Quick and vicious, slashes with a jagged blade.", "is_boss": false, "loot": [
           {"name": "Serrated Dagger", "slot": "weapon", "atk": 3, "pdef": 0, "mdef": 0, "mdmg": 0}
         ]}
       ],
@@ -66,7 +66,7 @@
       "description": "A river of molten rock cuts across the cavern floor, its surface cracking and reforming in slow, mesmerizing patterns. A narrow stone ledge follows the far wall, barely wide enough to traverse single-file. The air shimmers with heat distortion.",
       "exits": {"s": "room_3", "n": "room_8", "w": "room_7"},
       "mobs": [
-        {"name": "Cinder Elemental", "hp": 8, "max_hp": 8, "atk": 3, "mdef": 1, "is_boss": false, "loot": [
+        {"name": "Cinder Elemental", "hp": 8, "max_hp": 8, "atk": 3, "pdef": 1, "mdef": 1, "speed": 3, "abilities": ["attack", "cleave"], "personality": "Whirling pillar of embers that lashes out at anything nearby.", "is_boss": false, "loot": [
           {"name": "Ember Ring", "slot": "ring", "atk": 0, "pdef": 0, "mdef": 1, "mdmg": 3}
         ]}
       ],
@@ -79,8 +79,8 @@
       "description": "Towering bioluminescent mushrooms fill this cavern with pale blue and violet light. The air is thick with spores that drift like snow, and the ground squelches underfoot. Something has been nesting among the fungal stalks.",
       "exits": {"s": "room_4", "n": "room_9", "e": "room_10"},
       "mobs": [
-        {"name": "Spore Lurker", "hp": 6, "max_hp": 6, "atk": 2, "mdef": 2, "is_boss": false, "loot": []},
-        {"name": "Fungal Crawler", "hp": 5, "max_hp": 5, "atk": 3, "mdef": 1, "is_boss": false, "loot": []}
+        {"name": "Spore Lurker", "hp": 6, "max_hp": 6, "atk": 2, "pdef": 1, "mdef": 2, "speed": 3, "abilities": ["attack", "sleep"], "personality": "Ambush predator that releases clouds of sedating spores.", "is_boss": false, "loot": []},
+        {"name": "Fungal Crawler", "hp": 5, "max_hp": 5, "atk": 3, "pdef": 1, "mdef": 1, "speed": 4, "abilities": ["attack", "poison_arrow"], "personality": "Fast creeper that injects toxins through barbed tendrils.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": []
@@ -103,8 +103,8 @@
       "description": "A slender bridge of solid obsidian arcs over a chasm filled with roiling smoke and the distant glow of magma far below. The bridge is barely three feet wide, its surface razor-sharp at the edges. Wind howls up from the depths.",
       "exits": {"s": "room_5", "e": "room_11"},
       "mobs": [
-        {"name": "Lava Bat", "hp": 6, "max_hp": 6, "atk": 3, "mdef": 1, "is_boss": false, "loot": []},
-        {"name": "Lava Bat", "hp": 6, "max_hp": 6, "atk": 3, "mdef": 1, "is_boss": false, "loot": []}
+        {"name": "Lava Bat", "hp": 6, "max_hp": 6, "atk": 3, "pdef": 1, "mdef": 1, "speed": 4, "abilities": ["attack", "bleed"], "personality": "Swoops from above and rakes with razor-sharp talons.", "is_boss": false, "loot": []},
+        {"name": "Lava Bat", "hp": 6, "max_hp": 6, "atk": 3, "pdef": 1, "mdef": 1, "speed": 4, "abilities": ["attack", "bleed"], "personality": "Swoops from above and rakes with razor-sharp talons.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": []
@@ -115,7 +115,7 @@
       "description": "Enormous quartz crystals jut from every surface, refracting the volcanic light into prismatic shards that dance across the walls. The crystals hum with a low resonance that vibrates in the chest. A sulfurous draft blows from the west.",
       "exits": {"s": "room_6", "w": "room_11"},
       "mobs": [
-        {"name": "Crystal Golem", "hp": 10, "max_hp": 10, "atk": 4, "mdef": 2, "is_boss": false, "loot": [
+        {"name": "Crystal Golem", "hp": 10, "max_hp": 10, "atk": 4, "pdef": 2, "mdef": 2, "speed": 3, "abilities": ["attack", "cleave"], "personality": "Lumbering construct that swings crystalline fists in wide arcs.", "is_boss": false, "loot": [
           {"name": "Crystal Greatsword", "slot": "weapon", "atk": 5, "pdef": 0, "mdef": 0, "mdmg": 0}
         ]}
       ],
@@ -144,8 +144,8 @@
       "description": "Yellow sulfur deposits crust every surface, and acrid fumes sting the eyes and throat. Bubbling fumaroles vent scalding steam at irregular intervals. The convergence of two passages makes this a natural chokepoint before the deeper caves.",
       "exits": {"w": "room_8", "e": "room_9", "n": "room_12"},
       "mobs": [
-        {"name": "Sulfur Wyrm", "hp": 11, "max_hp": 11, "atk": 4, "mdef": 1, "is_boss": false, "loot": []},
-        {"name": "Ash Goblin Firebrand", "hp": 7, "max_hp": 7, "atk": 3, "mdef": 1, "is_boss": false, "loot": [
+        {"name": "Sulfur Wyrm", "hp": 11, "max_hp": 11, "atk": 4, "pdef": 2, "mdef": 1, "speed": 4, "abilities": ["attack", "poison_arrow", "cleave"], "personality": "Serpentine predator that spits caustic venom before coiling to strike.", "is_boss": false, "loot": []},
+        {"name": "Ash Goblin Firebrand", "hp": 7, "max_hp": 7, "atk": 3, "pdef": 2, "mdef": 1, "speed": 5, "abilities": ["attack", "curse", "bleed"], "personality": "Fanatical fire-worshipper that hexes foes before slashing with a burning blade.", "is_boss": false, "loot": [
           {"name": "Firebrand Staff", "slot": "ring", "atk": 0, "pdef": 0, "mdef": 2, "mdmg": 6}
         ]}
       ],
@@ -158,7 +158,7 @@
       "description": "The cavern opens into a vast chamber dominated by a lake of slowly churning magma. Islands of cooled basalt form a precarious path across. The heat is savage, and the orange light paints everything in shades of fire and blood.",
       "exits": {"s": "room_11", "n": "room_13"},
       "mobs": [
-        {"name": "Magma Elemental", "hp": 14, "max_hp": 14, "atk": 5, "mdef": 2, "is_boss": false, "loot": [
+        {"name": "Magma Elemental", "hp": 14, "max_hp": 14, "atk": 5, "pdef": 3, "mdef": 2, "speed": 3, "abilities": ["attack", "cleave", "bleed"], "personality": "Hulking mass of molten rock that erupts with devastating area attacks.", "is_boss": false, "loot": [
           {"name": "Molten Shield", "slot": "armor", "atk": 0, "pdef": 5, "mdef": 1, "mdmg": 0}
         ]}
       ],
@@ -171,8 +171,8 @@
       "description": "Scorched bones of dwarves and beasts alike litter the ground in grotesque piles. The walls are gouged with claw marks the size of a man's arm. A hot wind gusts from the north, carrying the unmistakable stench of dragon.",
       "exits": {"s": "room_12", "n": "room_14"},
       "mobs": [
-        {"name": "Drake Hatchling", "hp": 12, "max_hp": 12, "atk": 5, "mdef": 1, "is_boss": false, "loot": []},
-        {"name": "Drake Hatchling", "hp": 12, "max_hp": 12, "atk": 5, "mdef": 1, "is_boss": false, "loot": []}
+        {"name": "Drake Hatchling", "hp": 12, "max_hp": 12, "atk": 5, "pdef": 2, "mdef": 1, "speed": 4, "abilities": ["attack", "cleave", "bleed"], "personality": "Young dragon that lunges recklessly, snapping jaws and raking claws.", "is_boss": false, "loot": []},
+        {"name": "Drake Hatchling", "hp": 12, "max_hp": 12, "atk": 5, "pdef": 2, "mdef": 1, "speed": 4, "abilities": ["attack", "cleave", "bleed"], "personality": "Young dragon that lunges recklessly, snapping jaws and raking claws.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": []
@@ -183,7 +183,7 @@
       "description": "A colossal cavern glowing with rivers of lava that feed a central caldera. Atop a mound of melted gold and charred stone, the Magma Drake Pyraxis coils — scales like cooling magma, eyes like twin furnaces. The ground shudders with each breath it draws.",
       "exits": {"s": "room_13"},
       "mobs": [
-        {"name": "Magma Drake Pyraxis", "hp": 32, "max_hp": 32, "atk": 7, "mdef": 2, "is_boss": true, "loot": []}
+        {"name": "Magma Drake Pyraxis", "hp": 32, "max_hp": 32, "atk": 7, "pdef": 4, "mdef": 2, "speed": 4, "abilities": ["attack", "cleave", "curse", "heal"], "personality": "Ancient volcanic predator that alternates between devastating breath attacks and cunning self-preservation, healing when wounded and cursing those who dare approach.", "is_boss": true, "loot": []}
       ],
       "npcs": [],
       "items": []

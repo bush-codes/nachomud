@@ -3,14 +3,14 @@ from __future__ import annotations
 import logging
 
 import config
-from config import ACTION_HISTORY_SIZE, BASE_PERSONALITY, COMM_HISTORY_SIZE, LORE_HISTORY_SIZE, SPELL_COSTS
+from config import ABILITY_DEFINITIONS, ACTION_HISTORY_SIZE, BASE_PERSONALITY, CLASS_DEFINITIONS, COMM_HISTORY_SIZE, LORE_HISTORY_SIZE, SPELL_COSTS
 from llm import chat
 from models import AgentState, Room
 
 log = logging.getLogger("nachomud")
 
 def _build_commands_help(agent: AgentState, room: Room) -> str:
-    """Build dynamic commands list showing only what's currently possible."""
+    """Build dynamic commands list based on agent's class and current state."""
     lines = ["Available actions:"]
 
     # Movement — only show exits that exist
@@ -19,20 +19,45 @@ def _build_commands_help(agent: AgentState, room: Room) -> str:
         if d in room.exits:
             lines.append(f"  {d} — Move {dir_names[d]}")
 
-    # Combat — only show if enemies present
+    # Class abilities — only show affordable ones with appropriate targets
     living_mobs = [m for m in room.mobs if m.hp > 0]
-    if living_mobs:
-        lines.append("  attack <enemy> — Melee attack (weapon ATK)")
-        if agent.mp >= SPELL_COSTS["missile"]:
-            lines.append("  missile <enemy> — Magic missile (1 MP, ring MDMG)")
-        if agent.mp >= SPELL_COSTS["fireball"]:
-            lines.append("  fireball — AoE all enemies (3 MP, ring MDMG x2)")
-        if agent.mp >= SPELL_COSTS["poison"]:
-            lines.append("  poison <enemy> — Poison: 1 dmg/tick, 3 ticks (2 MP)")
+    class_def = CLASS_DEFINITIONS.get(agent.agent_class)
+    if class_def:
+        abilities = class_def["abilities"]
+    else:
+        abilities = ["attack"]
 
-    # Healing — only show if affordable
-    if agent.mp >= SPELL_COSTS["heal"]:
-        lines.append("  heal [ally] — Restore 30% max HP (2 MP)")
+    for ability_name in abilities:
+        defn = ABILITY_DEFINITIONS.get(ability_name)
+        if not defn:
+            continue
+
+        # Check affordability
+        cost = defn["cost"]
+        cost_type = defn["cost_type"]
+        if cost_type == "mp" and agent.mp < cost:
+            continue
+        if cost_type == "ap" and agent.ap < cost:
+            continue
+        if cost_type == "hp" and agent.hp <= cost:
+            continue
+
+        target = defn["target"]
+
+        # Enemy-targeting abilities only show if enemies present
+        if target in ("enemy", "all_enemies") and not living_mobs:
+            continue
+
+        # Build the command hint
+        cmd_display = ability_name.replace("_", " ")
+        if target == "enemy":
+            lines.append(f"  {cmd_display} <enemy> — {defn['description']}")
+        elif target == "ally":
+            lines.append(f"  {cmd_display} <ally> — {defn['description']}")
+        elif target == "ally_or_self":
+            lines.append(f"  {cmd_display} [ally] — {defn['description']}")
+        else:
+            lines.append(f"  {cmd_display} — {defn['description']}")
 
     # Items — only show if items on ground
     if room.items:
@@ -191,7 +216,7 @@ Your quest: {config.QUEST_DESCRIPTION}
 
 === YOUR EQUIPMENT ===
 Weapon: {agent.weapon.name} (ATK:{agent.weapon.atk}) | Armor: {agent.armor.name} (PDEF:{agent.armor.pdef}) | Ring: {agent.ring.name} (MDMG:{agent.ring.mdmg})
-HP: {agent.hp}/{agent.max_hp} | MP: {agent.mp}/{agent.max_mp}
+HP: {agent.hp}/{agent.max_hp} | {"AP: " + str(agent.ap) + "/" + str(agent.max_ap) if agent.max_ap > 0 else "MP: " + str(agent.mp) + "/" + str(agent.max_mp)}
 {history_block}
 
 === WHAT YOU SEE ===
@@ -209,7 +234,7 @@ MAX_RETRIES = 2
 
 
 def build_valid_actions(agent: AgentState, room: Room, allies: list[AgentState]) -> list[str]:
-    """Build a list of valid actions for the current game state."""
+    """Build a list of valid actions for the current game state (class-aware)."""
     actions = []
 
     # Movement
@@ -217,23 +242,46 @@ def build_valid_actions(agent: AgentState, room: Room, allies: list[AgentState])
     for d, target_id in room.exits.items():
         actions.append(f"{d} - Move {dir_names.get(d, d)}")
 
-    # Combat (only if enemies present)
+    # Class abilities
     living_mobs = [m for m in room.mobs if m.hp > 0]
-    for mob in living_mobs:
-        actions.append(f"attack {mob.name}")
-        if agent.mp >= SPELL_COSTS["missile"]:
-            actions.append(f"missile {mob.name} ({SPELL_COSTS['missile']} MP)")
-        if agent.mp >= SPELL_COSTS["poison"]:
-            actions.append(f"poison {mob.name} ({SPELL_COSTS['poison']} MP)")
-    if living_mobs and agent.mp >= SPELL_COSTS["fireball"]:
-        actions.append(f"fireball - Hit all enemies ({SPELL_COSTS['fireball']} MP)")
+    class_def = CLASS_DEFINITIONS.get(agent.agent_class)
+    ability_list = class_def["abilities"] if class_def else ["attack"]
 
-    # Healing
-    if agent.mp >= SPELL_COSTS["heal"]:
-        actions.append(f"heal - Heal yourself ({SPELL_COSTS['heal']} MP)")
-        for a in allies:
-            if a.alive and a.room_id == agent.room_id and a.name != agent.name:
-                actions.append(f"heal {a.name} ({SPELL_COSTS['heal']} MP)")
+    for ability_name in ability_list:
+        defn = ABILITY_DEFINITIONS.get(ability_name)
+        if not defn:
+            continue
+
+        cost = defn["cost"]
+        cost_type = defn["cost_type"]
+        if cost_type == "mp" and agent.mp < cost:
+            continue
+        if cost_type == "ap" and agent.ap < cost:
+            continue
+        if cost_type == "hp" and agent.hp <= cost:
+            continue
+
+        target = defn["target"]
+        cmd_display = ability_name.replace("_", " ")
+        cost_str = f"({cost} {cost_type.upper()})" if cost_type != "free" else ""
+
+        if target == "enemy":
+            for mob in living_mobs:
+                actions.append(f"{cmd_display} {mob.name} {cost_str}".strip())
+        elif target == "all_enemies":
+            if living_mobs:
+                actions.append(f"{cmd_display} - AoE {cost_str}".strip())
+        elif target == "ally":
+            for a in allies:
+                if a.alive and a.room_id == agent.room_id and a.name != agent.name:
+                    actions.append(f"{cmd_display} {a.name} {cost_str}".strip())
+        elif target == "ally_or_self":
+            actions.append(f"{cmd_display} - Self {cost_str}".strip())
+            for a in allies:
+                if a.alive and a.room_id == agent.room_id and a.name != agent.name:
+                    actions.append(f"{cmd_display} {a.name} {cost_str}".strip())
+        elif target == "self":
+            actions.append(f"{cmd_display} {cost_str}".strip())
 
     # Items
     for item in room.items:
@@ -296,35 +344,50 @@ def _parse_think_do(raw: str) -> tuple[str, str]:
 
 
 def _is_valid_action(cmd: str, arg: str, room: Room, agent: AgentState, allies: list[AgentState]) -> bool:
-    """Check if a parsed action is valid for the current game state."""
+    """Check if a parsed action is valid for the current game state (class-aware)."""
     if cmd in ("n", "s", "e", "w"):
         return cmd in room.exits
 
-    if cmd == "attack":
-        return any(m.hp > 0 and arg.lower() in m.name.lower() for m in room.mobs) if arg else False
+    # Check if cmd is a class ability
+    class_def = CLASS_DEFINITIONS.get(agent.agent_class)
+    ability_list = class_def["abilities"] if class_def else ["attack"]
 
-    if cmd == "missile":
-        if agent.mp < SPELL_COSTS["missile"]:
+    if cmd in ABILITY_DEFINITIONS:
+        if cmd not in ability_list:
+            return False  # not this class's ability
+
+        defn = ABILITY_DEFINITIONS[cmd]
+        cost = defn["cost"]
+        cost_type = defn["cost_type"]
+        if cost_type == "mp" and agent.mp < cost:
             return False
-        return any(m.hp > 0 and arg.lower() in m.name.lower() for m in room.mobs) if arg else False
-
-    if cmd == "fireball":
-        return agent.mp >= SPELL_COSTS["fireball"] and any(m.hp > 0 for m in room.mobs)
-
-    if cmd == "poison":
-        if agent.mp < SPELL_COSTS["poison"]:
+        if cost_type == "ap" and agent.ap < cost:
             return False
-        return any(m.hp > 0 and arg.lower() in m.name.lower() for m in room.mobs) if arg else False
-
-    if cmd == "heal":
-        if agent.mp < SPELL_COSTS["heal"]:
+        if cost_type == "hp" and agent.hp <= cost:
             return False
-        if not arg:
-            return True  # heal self
-        # Check if targeting self or a valid ally
-        if arg.lower() in agent.name.lower():
+
+        target = defn["target"]
+        living_mobs = [m for m in room.mobs if m.hp > 0]
+
+        if target == "enemy":
+            return any(arg.lower() in m.name.lower() for m in living_mobs) if arg else False
+        if target == "all_enemies":
+            return bool(living_mobs)
+        if target == "self":
             return True
-        return any(a.alive and a.room_id == agent.room_id and arg.lower() in a.name.lower() for a in allies)
+        if target == "ally_or_self":
+            if not arg:
+                return True  # self
+            if arg.lower() in agent.name.lower():
+                return True
+            return any(a.alive and a.room_id == agent.room_id and arg.lower() in a.name.lower() for a in allies)
+        if target == "ally":
+            if not arg:
+                return False
+            return any(a.alive and a.room_id == agent.room_id and a.name != agent.name and arg.lower() in a.name.lower() for a in allies)
+        if target == "all_allies":
+            return True
+        return False
 
     if cmd in ("get", "take", "pick"):
         return any(arg.lower() in i.name.lower() for i in room.items) if arg else False
@@ -333,10 +396,8 @@ def _is_valid_action(cmd: str, arg: str, room: Room, agent: AgentState, allies: 
         target = arg.split(None, 1)[0].lower() if arg else ""
         if not target:
             return False
-        # Check NPCs
         if any(target in n.name.lower() for n in room.npcs):
             return True
-        # Check allies in room
         return any(a.alive and a.room_id == agent.room_id and a.name != agent.name and target in a.name.lower() for a in allies)
 
     if cmd == "say":
@@ -390,11 +451,31 @@ _DIRECTION_ALIASES = {
     "north": "n", "south": "s", "east": "e", "west": "w",
 }
 
+# Multi-word abilities: map "lay on hands" → "lay_on_hands", etc.
+_MULTI_WORD_ABILITIES = {
+    "lay on hands": "lay_on_hands",
+    "aimed shot": "aimed_shot",
+    "poison arrow": "poison_arrow",
+    "arcane storm": "arcane_storm",
+    "holy bolt": "holy_bolt",
+    "smoke bomb": "smoke_bomb",
+}
+
 def parse_action(action: str) -> tuple[str, str]:
     """Returns (command, argument). Argument may be empty."""
-    parts = action.strip().split(None, 1)
-    if not parts:
+    stripped = action.strip()
+    if not stripped:
         return ("say", "I'm not sure what to do.")
+
+    # Check for multi-word abilities first
+    lower = stripped.lower()
+    for phrase, ability_name in _MULTI_WORD_ABILITIES.items():
+        if lower.startswith(phrase):
+            rest = stripped[len(phrase):].strip()
+            return (ability_name, rest)
+
+    # Also handle underscore forms directly (lay_on_hands, etc.)
+    parts = stripped.split(None, 1)
     cmd = parts[0].lower()
     arg = parts[1] if len(parts) > 1 else ""
 

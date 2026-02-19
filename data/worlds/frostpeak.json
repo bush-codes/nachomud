@@ -10,7 +10,7 @@
       "description": "A cavernous hall of pale blue stone, its vaulted ceiling crusted with centuries of ice. Frost-rimed banners hang from iron brackets along the walls, their heraldry long obscured beneath crystalline growth. Cold wind howls through three archways leading east, west, and north.",
       "exits": {"e": "room_2", "w": "room_4", "n": "room_6"},
       "mobs": [
-        {"name": "Frost Goblin Scout", "hp": 4, "max_hp": 4, "atk": 2, "mdef": 0, "is_boss": false, "loot": []}
+        {"name": "Frost Goblin Scout", "hp": 4, "max_hp": 4, "atk": 2, "pdef": 0, "mdef": 0, "speed": 3, "abilities": ["attack"], "personality": "Skittish scout that darts in for quick strikes and retreats.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": []
@@ -21,10 +21,10 @@
       "description": "Rows of frozen bunks line the walls, each one encased in a thin shell of rime. Shattered weapons and dented shields litter the floor, remnants of the garrison that once held this citadel. The air bites with unnatural cold.",
       "exits": {"w": "room_1", "e": "room_3"},
       "mobs": [
-        {"name": "Frost Goblin Guard", "hp": 5, "max_hp": 5, "atk": 2, "mdef": 0, "is_boss": false, "loot": [
+        {"name": "Frost Goblin Guard", "hp": 5, "max_hp": 5, "atk": 2, "pdef": 1, "mdef": 0, "speed": 2, "abilities": ["attack"], "personality": "Disciplined sentry that stands its ground and fights defensively.", "is_boss": false, "loot": [
           {"name": "Frosted Short Sword", "slot": "weapon", "atk": 3, "pdef": 0, "mdef": 0, "mdmg": 0}
         ]},
-        {"name": "Frost Goblin Archer", "hp": 4, "max_hp": 4, "atk": 2, "mdef": 0, "is_boss": false, "loot": []}
+        {"name": "Frost Goblin Archer", "hp": 4, "max_hp": 4, "atk": 2, "pdef": 0, "mdef": 0, "speed": 3, "abilities": ["attack"], "personality": "Cowardly archer that picks off wounded targets from the back.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": []
@@ -35,7 +35,7 @@
       "description": "Weapon racks and armor stands fill this frigid chamber, most long since looted. A few pieces remain, frozen to the walls by thick ice. A narrow staircase in the north corner spirals upward toward the Guard Tower.",
       "exits": {"w": "room_2", "n": "room_9"},
       "mobs": [
-        {"name": "Ice Hound", "hp": 6, "max_hp": 6, "atk": 3, "mdef": 0, "is_boss": false, "loot": []}
+        {"name": "Ice Hound", "hp": 6, "max_hp": 6, "atk": 3, "pdef": 0, "mdef": 0, "speed": 3, "abilities": ["attack"], "personality": "Feral beast that lunges at the nearest enemy with snapping jaws.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": [
@@ -48,7 +48,7 @@
       "description": "Towering bookshelves stretch toward the ceiling, their contents sealed behind walls of translucent ice. Frozen ink has burst from shattered bottles, leaving dark stains across the frost-covered floor. A passage continues deeper to the west.",
       "exits": {"e": "room_1", "w": "room_5"},
       "mobs": [
-        {"name": "Frost Wisp", "hp": 5, "max_hp": 5, "atk": 2, "mdef": 1, "is_boss": false, "loot": []}
+        {"name": "Frost Wisp", "hp": 5, "max_hp": 5, "atk": 2, "pdef": 0, "mdef": 1, "speed": 2, "abilities": ["attack"], "personality": "Flickering spirit that drifts through shelves and strikes erratically.", "is_boss": false, "loot": []}
       ],
       "npcs": [
         {
@@ -66,7 +66,7 @@
       "description": "A circular room ringed with rune-carved pillars, each one pulsing with faint blue light. An elaborate summoning circle dominates the floor, its lines etched deep into the stone and filled with frozen quicksilver. Something was called here, and it never left.",
       "exits": {"e": "room_4", "n": "room_10"},
       "mobs": [
-        {"name": "Bound Ice Elemental", "hp": 8, "max_hp": 8, "atk": 3, "mdef": 2, "is_boss": false, "loot": [
+        {"name": "Bound Ice Elemental", "hp": 8, "max_hp": 8, "atk": 3, "pdef": 2, "mdef": 2, "speed": 3, "abilities": ["attack", "curse"], "personality": "Tormented elemental that lashes out with freezing curses to weaken intruders.", "is_boss": false, "loot": [
           {"name": "Elemental Core Ring", "slot": "ring", "atk": 0, "pdef": 0, "mdef": 2, "mdmg": 5}
         ]}
       ],
@@ -79,8 +79,8 @@
       "description": "A long hallway where every surface gleams with thick ice. The walls have narrowed as ice has crept inward over the years, leaving barely enough room to walk single file. Frozen footprints of enormous size are pressed into the floor ahead.",
       "exits": {"s": "room_1", "n": "room_7"},
       "mobs": [
-        {"name": "Frost Wolf", "hp": 6, "max_hp": 6, "atk": 3, "mdef": 0, "is_boss": false, "loot": []},
-        {"name": "Frost Wolf", "hp": 6, "max_hp": 6, "atk": 3, "mdef": 0, "is_boss": false, "loot": []}
+        {"name": "Frost Wolf", "hp": 6, "max_hp": 6, "atk": 3, "pdef": 1, "mdef": 0, "speed": 4, "abilities": ["attack", "bleed"], "personality": "Pack hunter that circles prey and inflicts bleeding wounds.", "is_boss": false, "loot": []},
+        {"name": "Frost Wolf", "hp": 6, "max_hp": 6, "atk": 3, "pdef": 1, "mdef": 0, "speed": 4, "abilities": ["attack", "bleed"], "personality": "Pack hunter that circles prey and inflicts bleeding wounds.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": []
@@ -91,7 +91,7 @@
       "description": "The worked stone gives way to a natural cavern of blue-white ice. Massive stalactites of frozen water hang from the ceiling, and the floor is treacherously slick. Passages branch in every direction — east to the Guard Tower, west to the Crystal Sanctum, and north toward the Throne Room.",
       "exits": {"s": "room_6", "n": "room_8", "e": "room_9", "w": "room_10"},
       "mobs": [
-        {"name": "Ice Elemental", "hp": 9, "max_hp": 9, "atk": 3, "mdef": 2, "is_boss": false, "loot": []}
+        {"name": "Ice Elemental", "hp": 9, "max_hp": 9, "atk": 3, "pdef": 2, "mdef": 2, "speed": 3, "abilities": ["attack", "sleep"], "personality": "Slow-moving construct that freezes enemies in place before shattering them.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": []
@@ -102,7 +102,7 @@
       "description": "A grand chamber dominated by a throne carved from a single block of glacial ice. The seat is cracked down the middle, and dark frost radiates outward from it in jagged lines across the floor. The air here is so cold it burns the lungs.",
       "exits": {"s": "room_7", "n": "room_11"},
       "mobs": [
-        {"name": "Frost Giant Thane", "hp": 14, "max_hp": 14, "atk": 5, "mdef": 1, "is_boss": false, "loot": [
+        {"name": "Frost Giant Thane", "hp": 14, "max_hp": 14, "atk": 5, "pdef": 2, "mdef": 1, "speed": 3, "abilities": ["attack", "cleave"], "personality": "Brutal warlord that swings wide to hit multiple foes at once.", "is_boss": false, "loot": [
           {"name": "Thane's Greataxe", "slot": "weapon", "atk": 6, "pdef": 0, "mdef": 0, "mdmg": 0}
         ]}
       ],
@@ -115,7 +115,7 @@
       "description": "A tall cylindrical room with arrow slits offering a dizzying view of the frozen mountainside. Icy wind screams through the openings. A spiral stair descends south to the Armory, and a frozen walkway leads west toward the Ice Cavern.",
       "exits": {"s": "room_3", "w": "room_7"},
       "mobs": [
-        {"name": "Frost Giant Sentry", "hp": 10, "max_hp": 10, "atk": 4, "mdef": 1, "is_boss": false, "loot": []}
+        {"name": "Frost Giant Sentry", "hp": 10, "max_hp": 10, "atk": 4, "pdef": 2, "mdef": 1, "speed": 3, "abilities": ["attack", "poison_arrow"], "personality": "Watchful guard that fires poisoned bolts from the arrow slits before engaging in melee.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": [
@@ -128,7 +128,7 @@
       "description": "Enormous crystals of pale blue ice jut from the walls and floor, humming with arcane resonance. The light refracts through them in blinding patterns, casting prismatic shadows that shift and dance. A passage leads east to the Ice Cavern and south to the Ritual Chamber.",
       "exits": {"s": "room_5", "e": "room_7"},
       "mobs": [
-        {"name": "Crystal Wraith", "hp": 10, "max_hp": 10, "atk": 4, "mdef": 2, "is_boss": false, "loot": [
+        {"name": "Crystal Wraith", "hp": 10, "max_hp": 10, "atk": 4, "pdef": 2, "mdef": 2, "speed": 4, "abilities": ["attack", "curse", "sleep"], "personality": "Spectral horror that curses intruders and puts them to sleep before draining their life.", "is_boss": false, "loot": [
           {"name": "Crystal Shard Ring", "slot": "ring", "atk": 0, "pdef": 0, "mdef": 3, "mdmg": 6}
         ]}
       ],
@@ -148,8 +148,8 @@
       "description": "The corridor opens into a steep passage carved into the mountainside. Frigid wind batters from above, and each step upward is a battle against the gale. The stone walls are scarred with deep claw marks, as though something enormous once clawed its way through.",
       "exits": {"s": "room_8", "n": "room_12"},
       "mobs": [
-        {"name": "Frost Giant Berserker", "hp": 14, "max_hp": 14, "atk": 5, "mdef": 1, "is_boss": false, "loot": []},
-        {"name": "Ice Wraith", "hp": 8, "max_hp": 8, "atk": 3, "mdef": 2, "is_boss": false, "loot": []}
+        {"name": "Frost Giant Berserker", "hp": 14, "max_hp": 14, "atk": 5, "pdef": 2, "mdef": 1, "speed": 4, "abilities": ["attack", "cleave", "bleed"], "personality": "Frenzied brute that charges recklessly and cleaves through anything in its path.", "is_boss": false, "loot": []},
+        {"name": "Ice Wraith", "hp": 8, "max_hp": 8, "atk": 3, "pdef": 2, "mdef": 2, "speed": 5, "abilities": ["attack", "curse", "sleep"], "personality": "Ethereal shade that phases through attacks and curses the living.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": []
@@ -160,7 +160,7 @@
       "description": "A narrow ledge hugs the mountainside, exposed to the full fury of the blizzard. The drop to the left is sheer and endless, swallowed by white. Ahead, the path narrows further before opening into the Summit Tower. Ice clings to every surface in thick, treacherous sheets.",
       "exits": {"s": "room_11", "n": "room_13"},
       "mobs": [
-        {"name": "Stormbound Giant", "hp": 18, "max_hp": 18, "atk": 6, "mdef": 2, "is_boss": false, "loot": [
+        {"name": "Stormbound Giant", "hp": 18, "max_hp": 18, "atk": 6, "pdef": 3, "mdef": 2, "speed": 3, "abilities": ["attack", "cleave", "bleed"], "personality": "Mountain guardian bound by storm magic that delivers devastating sweeping blows.", "is_boss": false, "loot": [
           {"name": "Stormforged Blade", "slot": "weapon", "atk": 7, "pdef": 0, "mdef": 0, "mdmg": 0}
         ]}
       ],
@@ -173,7 +173,7 @@
       "description": "The peak of Frostpeak Citadel, open to the howling sky. A colossal spire of cursed ice rises from the center of the platform — the Froststone, pulsing with malevolent blue light. Before it stands Frost Titan Valdris, a towering colossus of living ice and fury, his eyes blazing with cold fire.",
       "exits": {"s": "room_12"},
       "mobs": [
-        {"name": "Frost Titan Valdris", "hp": 28, "max_hp": 28, "atk": 6, "mdef": 2, "is_boss": true, "loot": []}
+        {"name": "Frost Titan Valdris", "hp": 28, "max_hp": 28, "atk": 6, "pdef": 4, "mdef": 2, "speed": 4, "abilities": ["attack", "curse", "heal", "cleave"], "personality": "Ancient titan corrupted by the Froststone who curses foes, heals from the storm, and cleaves through groups with glacial fury.", "is_boss": true, "loot": []}
       ],
       "npcs": [],
       "items": []

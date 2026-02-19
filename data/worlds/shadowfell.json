@@ -10,7 +10,7 @@
       "description": "Heavy oak doors open to a circular chamber hewn from black stone, its vaulted ceiling lost in shadow. Flickering torchlight dances across crude goblin markings on the walls, while sulfur and decay seep from cracks in the floor.",
       "exits": {"n": "room_2"},
       "mobs": [
-        {"name": "Goblin Scout", "hp": 4, "max_hp": 4, "atk": 2, "mdef": 0, "is_boss": false, "loot": []}
+        {"name": "Goblin Scout", "hp": 4, "max_hp": 4, "atk": 2, "pdef": 0, "mdef": 0, "speed": 3, "abilities": ["attack"], "personality": "Skittish lookout that fights desperately when cornered.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": []
@@ -21,7 +21,7 @@
       "description": "Rows of moldering bunks line the stone walls, rotted straw spilling across the floor. A bloodied soldier clutches his wounded side behind an overturned table.",
       "exits": {"s": "room_1", "n": "room_4", "e": "room_3"},
       "mobs": [
-        {"name": "Goblin Guard", "hp": 6, "max_hp": 6, "atk": 3, "mdef": 0, "is_boss": false, "loot": [
+        {"name": "Goblin Guard", "hp": 6, "max_hp": 6, "atk": 3, "pdef": 1, "mdef": 0, "speed": 2, "abilities": ["attack"], "personality": "Disciplined sentry that holds its ground and blocks the way forward.", "is_boss": false, "loot": [
           {"name": "Rusty Sword", "slot": "weapon", "atk": 3, "pdef": 0, "mdef": 0, "mdmg": 0}
         ]}
       ],
@@ -52,8 +52,8 @@
       "description": "A long hall lined with weapon racks, most stripped bare. Scorch marks on the walls tell of recent battle. The stench of goblin occupation hangs thick.",
       "exits": {"s": "room_2", "n": "room_6", "e": "room_5"},
       "mobs": [
-        {"name": "Goblin Raider", "hp": 5, "max_hp": 5, "atk": 3, "mdef": 0, "is_boss": false, "loot": []},
-        {"name": "Goblin Shaman", "hp": 4, "max_hp": 4, "atk": 2, "mdef": 1, "is_boss": false, "loot": [
+        {"name": "Goblin Raider", "hp": 5, "max_hp": 5, "atk": 3, "pdef": 0, "mdef": 0, "speed": 3, "abilities": ["attack"], "personality": "Reckless brute that charges in swinging wildly.", "is_boss": false, "loot": []},
+        {"name": "Goblin Shaman", "hp": 4, "max_hp": 4, "atk": 2, "pdef": 0, "mdef": 1, "speed": 2, "abilities": ["attack"], "personality": "Cowardly spellcaster that hides behind allies and lashes out when exposed.", "is_boss": false, "loot": [
           {"name": "Bone Ring", "slot": "ring", "atk": 0, "pdef": 0, "mdef": 2, "mdmg": 4}
         ]}
       ],
@@ -66,7 +66,7 @@
       "description": "Bookshelves have toppled like dominoes, their contents reduced to ash and rot. A faint arcane hum emanates from somewhere beneath the rubble.",
       "exits": {"w": "room_4"},
       "mobs": [
-        {"name": "Dust Wraith", "hp": 7, "max_hp": 7, "atk": 3, "mdef": 2, "is_boss": false, "loot": [
+        {"name": "Dust Wraith", "hp": 7, "max_hp": 7, "atk": 3, "pdef": 0, "mdef": 2, "speed": 3, "abilities": ["attack"], "personality": "Ethereal predator that drifts silently and strikes from the shadows.", "is_boss": false, "loot": [
           {"name": "Arcane Focus", "slot": "ring", "atk": 0, "pdef": 0, "mdef": 3, "mdmg": 6}
         ]}
       ],
@@ -88,7 +88,7 @@
       "description": "Shattered pews lie scattered across cracked stone. A defiled altar stands at the far end, weeping black ichor. The air recoils from whispered prayers in dark tongues.",
       "exits": {"w": "room_6", "n": "room_9"},
       "mobs": [
-        {"name": "Corrupted Priest", "hp": 10, "max_hp": 10, "atk": 4, "mdef": 2, "is_boss": false, "loot": []}
+        {"name": "Corrupted Priest", "hp": 10, "max_hp": 10, "atk": 4, "pdef": 1, "mdef": 2, "speed": 3, "abilities": ["attack", "curse"], "personality": "Cunning spellcaster that curses intruders before closing in to finish them.", "is_boss": false, "loot": []}
       ],
       "npcs": [
         {
@@ -106,10 +106,10 @@
       "description": "A cavernous hall with vaulted ceilings lost in darkness. Tattered banners hang from the walls, their heraldry consumed by creeping shadow. The throne at the far end sits empty and cracked.",
       "exits": {"s": "room_6", "n": "room_10", "e": "room_9"},
       "mobs": [
-        {"name": "Shadow Warrior", "hp": 9, "max_hp": 9, "atk": 4, "mdef": 1, "is_boss": false, "loot": [
+        {"name": "Shadow Warrior", "hp": 9, "max_hp": 9, "atk": 4, "pdef": 2, "mdef": 1, "speed": 4, "abilities": ["attack", "bleed"], "personality": "Relentless shadow-touched fighter that slashes deep to make enemies bleed out.", "is_boss": false, "loot": [
           {"name": "Shadow Blade", "slot": "weapon", "atk": 6, "pdef": 0, "mdef": 0, "mdmg": 0}
         ]},
-        {"name": "Wraith", "hp": 8, "max_hp": 8, "atk": 3, "mdef": 2, "is_boss": false, "loot": []}
+        {"name": "Wraith", "hp": 8, "max_hp": 8, "atk": 3, "pdef": 1, "mdef": 2, "speed": 4, "abilities": ["attack", "curse"], "personality": "Vengeful spirit that drains the will of the living with its cursed touch.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": []
@@ -120,7 +120,7 @@
       "description": "Rusted iron bars line both walls, cells stretching into darkness. Chains rattle with no wind. Something scratches at the stone from inside a sealed cell.",
       "exits": {"w": "room_8", "s": "room_7", "n": "room_11"},
       "mobs": [
-        {"name": "Tortured Soul", "hp": 6, "max_hp": 6, "atk": 3, "mdef": 1, "is_boss": false, "loot": []}
+        {"name": "Tortured Soul", "hp": 6, "max_hp": 6, "atk": 3, "pdef": 1, "mdef": 1, "speed": 3, "abilities": ["attack", "sleep"], "personality": "Tormented shade that wails to put intruders into a deathlike sleep.", "is_boss": false, "loot": []}
       ],
       "npcs": [
         {
@@ -147,7 +147,7 @@
       "description": "Iron maidens and racks line the walls, their mechanisms still glistening with dark purpose. The drain in the center of the floor leads somewhere unspeakable.",
       "exits": {"s": "room_9", "n": "room_13"},
       "mobs": [
-        {"name": "Demon Torturer", "hp": 12, "max_hp": 12, "atk": 5, "mdef": 1, "is_boss": false, "loot": [
+        {"name": "Demon Torturer", "hp": 12, "max_hp": 12, "atk": 5, "pdef": 2, "mdef": 1, "speed": 4, "abilities": ["attack", "bleed", "cleave"], "personality": "Sadistic fiend that cleaves through groups and relishes inflicting bleeding wounds.", "is_boss": false, "loot": [
           {"name": "Demon Plate", "slot": "armor", "atk": 0, "pdef": 5, "mdef": 2, "mdmg": 0}
         ]}
       ],
@@ -160,8 +160,8 @@
       "description": "Ancient sarcophagi line the walls, their lids cracked and displaced. A cold wind rises from the depths, carrying whispers of the restless dead.",
       "exits": {"s": "room_10", "e": "room_13", "n": "room_14"},
       "mobs": [
-        {"name": "Skeleton Guardian", "hp": 8, "max_hp": 8, "atk": 4, "mdef": 0, "is_boss": false, "loot": []},
-        {"name": "Bone Mage", "hp": 6, "max_hp": 6, "atk": 2, "mdef": 3, "is_boss": false, "loot": [
+        {"name": "Skeleton Guardian", "hp": 8, "max_hp": 8, "atk": 4, "pdef": 3, "mdef": 0, "speed": 3, "abilities": ["attack", "cleave"], "personality": "Tireless bone sentinel that sweeps its massive blade in wide arcs.", "is_boss": false, "loot": []},
+        {"name": "Bone Mage", "hp": 6, "max_hp": 6, "atk": 2, "pdef": 2, "mdef": 3, "speed": 3, "abilities": ["attack", "curse", "poison_arrow"], "personality": "Calculating necromancer that weakens foes with curses and toxic bolts from afar.", "is_boss": false, "loot": [
           {"name": "Necromancer's Ring", "slot": "ring", "atk": 0, "pdef": 0, "mdef": 3, "mdmg": 7}
         ]}
       ],
@@ -172,9 +172,9 @@
       "id": "room_13",
       "name": "Ancient Tomb",
       "description": "A vast burial chamber dominated by a central sarcophagus of black marble. Runes pulse with sickly purple light along every surface. The air hums with dark energy.",
-      "exits": {"w": "room_12", "s": "room_11", "n": "room_14"},
+      "exits": {"w": "room_12", "s": "room_11"},
       "mobs": [
-        {"name": "Lich Acolyte", "hp": 14, "max_hp": 14, "atk": 5, "mdef": 3, "is_boss": false, "loot": []}
+        {"name": "Lich Acolyte", "hp": 14, "max_hp": 14, "atk": 5, "pdef": 2, "mdef": 3, "speed": 5, "abilities": ["attack", "curse", "sleep"], "personality": "Ancient undead sorcerer that curses and puts enemies to sleep before draining their life.", "is_boss": false, "loot": []}
       ],
       "npcs": [],
       "items": []
@@ -185,7 +185,7 @@
       "description": "The corridor opens into a chamber pulsing with violet light. Reality itself seems thin here — the walls shimmer and warp. Beyond the far archway, darkness writhes.",
       "exits": {"s": "room_12", "n": "room_15"},
       "mobs": [
-        {"name": "Death Knight", "hp": 18, "max_hp": 18, "atk": 6, "mdef": 2, "is_boss": false, "loot": [
+        {"name": "Death Knight", "hp": 18, "max_hp": 18, "atk": 6, "pdef": 3, "mdef": 2, "speed": 4, "abilities": ["attack", "cleave", "bleed"], "personality": "Fallen champion in cursed armor that cleaves through ranks and leaves grievous bleeding wounds.", "is_boss": false, "loot": [
           {"name": "Runic Greatsword", "slot": "weapon", "atk": 8, "pdef": 0, "mdef": 0, "mdmg": 0}
         ]}
       ],
@@ -198,7 +198,7 @@
       "description": "A vast cavern where reality has torn open. A swirling vortex of absolute darkness dominates the center, tendrils of shadow reaching outward like grasping fingers. The Void Lord stands before the rift, a towering figure of living shadow and malice.",
       "exits": {"s": "room_14"},
       "mobs": [
-        {"name": "Void Lord Malachar", "hp": 30, "max_hp": 30, "atk": 6, "mdef": 2, "is_boss": true, "loot": []}
+        {"name": "Void Lord Malachar", "hp": 30, "max_hp": 30, "atk": 6, "pdef": 4, "mdef": 2, "speed": 4, "abilities": ["attack", "curse", "heal", "cleave"], "personality": "Towering void entity that curses the strongest threat, heals when wounded, and cleaves through clustered foes with tendrils of shadow.", "is_boss": true, "loot": []}
       ],
       "npcs": [],
       "items": []

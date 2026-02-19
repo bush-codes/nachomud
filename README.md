@@ -1,6 +1,6 @@
 # NachoMUD
 
-An AI-powered text-based dungeon crawler where LLM-controlled agents cooperate to navigate dungeons, battle monsters, and defeat final bosses. Features multiple worlds with different topologies to test agent generalization.
+An AI-powered text-based dungeon crawler where LLM-controlled agents cooperate to navigate dungeons, battle monsters, and defeat final bosses. Select a party of 3 from 6 unique character classes, each with their own abilities and playstyle. Features speed-based initiative, LLM-driven mob turns, a buff/debuff system, and multiple worlds with different topologies to test agent generalization.
 
 ## Background: From Neuroevolution to Large Language Models
 
@@ -91,62 +91,67 @@ The original research dreamed of agents that could talk to each other, form stra
 
 ## Overview
 
-NachoMUD is a collaborative AI dungeon simulation that showcases multi-agent reasoning and strategic cooperation. Three AI-controlled adventurers -- each with distinct personalities and combat roles -- must work together to survive encounters with progressively dangerous monsters and ultimately defeat the final boss.
+NachoMUD is a collaborative AI dungeon simulation that showcases multi-agent reasoning and strategic cooperation. Select a party of 3 from 6 character classes -- each with unique abilities and combat roles -- and watch as they work together to survive encounters with progressively dangerous monsters and defeat the final boss.
 
-The game uses **Claude** or local LLMs via **Ollama** to power real-time decision-making for all agents, including combat actions and tactical coordination. The narrator also uses LLMs to generate dynamic, story-driven descriptions of events.
+The game uses **Claude** or local LLMs via **Ollama** to power real-time decision-making for all agents and monsters, including combat actions, tactical coordination, and in-character dialogue. The narrator also uses LLMs to generate dynamic story-driven descriptions.
 
 ## Features
 
-- **AI-Driven Agents**: Three autonomous characters (Kael the Warrior, Lyria the Mage, Finn the Ranger) make strategic decisions using Claude or local LLMs via Ollama
-- **Communication + Action Phases**: Each tick has a free communication phase (say/tell/whisper/yell without consuming their action) followed by an action phase, all based on what they've personally witnessed (room-scoped, like a MUD scrollback)
-- **Witnessed Events Model**: Agents only know what they've seen in their room -- no global information leaking. Own actions prefixed with `>>`, others' actions observed naturally, arrivals/departures tracked
-- **Dynamic Commands & Retry**: Action prompts only show commands relevant to the current state (available exits, affordable spells, enemies present). Invalid actions trigger a retry with a valid-actions list
-- **Sensory Awareness**: Agents see their current room contents and exit names, eliminating the need for explicit "look" commands
-- **Real-Time Combat System**: Attack, magic spells (missile, fireball, poison), healing, and item management with rich failure messages
-- **Procedural Narration**: LLM-generated story narration for combat and dialogue
-- **Multiple Worlds**: 4 hand-crafted dungeons with different topologies (linear, hub-and-spoke, ring/loop, wide branching) to test agent generalization
-- **Dynamic World**: NPCs, loot, and escalating mob difficulty in each world
-- **Cooperative Gameplay**: Agents coordinate through a dedicated communication phase each tick (warnings, requests, intel) plus witnessed actions and room-scoped awareness
-- **Web Visualization**: Real-time streaming UI with live events, dungeon map, agent panels, and simulation controls
+- **6 Character Classes**: Warrior, Paladin, Mage, Cleric, Ranger, Rogue -- each with 5 unique abilities and distinct stats
+- **Party Selection**: Choose 3 classes for your party composition (default: Warrior, Mage, Ranger)
+- **24 Unique Abilities**: Physical attacks, magic, healing, buffs, debuffs, crowd control -- zero overlap between classes
+- **Speed-Based Initiative**: Agents and mobs act in speed order (Rogue at 6, Mage at 4, Warrior at 3)
+- **LLM-Driven Mob Turns**: Monsters make their own decisions using LLM reasoning, with taunt/sleep enforcement
+- **Buff/Debuff System**: Defend, ward, barrier, evade, rally, shield, taunt, sleep, curse, poison, bleed, smoke bomb
+- **Communication + Action Phases**: Each tick has a free communication phase (say/tell/whisper/yell) followed by interleaved agent and mob action turns
+- **Witnessed Events Model**: Agents only know what they've seen in their room -- no global information leaking
+- **Dynamic Commands & Retry**: Action prompts only show class-appropriate commands relevant to current state. Invalid actions trigger retry
+- **Deterministic Combat**: All damage formulas are deterministic (no RNG/hit chance)
+- **Class-Specific Equipment**: Items can be restricted to certain classes. Agents see `[CANNOT USE]` on wrong-class gear
+- **Multiple Worlds**: 4 hand-crafted dungeons with different topologies (linear, hub-and-spoke, ring/loop, wide branching)
+- **Web Visualization**: Real-time streaming UI with party selector, dungeon map, agent panels with status effects, and event log
+- **Comprehensive Tests**: 224 tests covering abilities, effects, initiative, mob AI, equipment, engine, and world data
 
 ## Project Structure
 
 ```
 nachomud/
 ├── main.py              # CLI game loop (20 ticks default)
-├── agent.py             # LLM prompting: comm phase, action phase, dynamic commands, retry
+├── engine.py            # Core game logic: agents, actions, initiative, witnesses
+├── abilities.py         # 24 ability resolvers (registry pattern)
+├── effects.py           # StatusEffect system: buffs, debuffs, DoTs
+├── mob_ai.py            # LLM-driven mob turns
+├── agent.py             # LLM prompting: comm/action phases, class-specific commands
+├── combat.py            # Legacy damage resolution
+├── world.py             # Room loading, world listing, sensory context
+├── narrator.py          # LLM-powered story narration
+├── models.py            # Dataclasses: Item, Mob, NPC, Room, AgentState, StatusEffect
+├── config.py            # CLASS_DEFINITIONS, ABILITY_DEFINITIONS, LLM settings
 ├── llm.py               # LLM abstraction (Anthropic SDK or Ollama)
-├── combat.py            # Damage resolution: attack, missile, fireball, poison, heal
-├── world.py             # Room loading, world listing, sensory context building
-├── narrator.py          # LLM-powered story narration (room descriptions, combat flavor)
-├── models.py            # Dataclasses: Item, Mob, NPC, Room, AgentState, GameEvent
-├── config.py            # Agent templates (3 agents), spell costs, LLM_BACKEND, MAX_TICKS
 ├── run.sh               # Launch script (Ollama + backend + frontend)
-├── requirements.txt     # Python dependencies
+├── tests/               # 224 pytest tests
 ├── data/
 │   ├── worlds/          # World JSON files (one per dungeon)
-│   │   ├── shadowfell.json    # 15-room linear fortress (original)
+│   │   ├── shadowfell.json    # 15-room linear fortress
 │   │   ├── frostpeak.json     # 13-room hub-and-spoke frozen citadel
 │   │   ├── serpentmire.json   # 12-room ring/loop swamp
 │   │   └── emberhollows.json  # 14-room wide branching volcanic caverns
 │   └── logs/            # Simulation transcripts (auto-generated)
-├── web/                     # Web visualization
+├── web/
 │   ├── backend/
 │   │   └── server.py        # FastAPI server - streams simulation as NDJSON
 │   └── frontend/            # React 19 + TypeScript + Vite 6 + Tailwind CSS
 │       └── src/
-│           ├── App.tsx           # Main component: streaming state management
-│           ├── types.ts          # TS interfaces matching backend models
+│           ├── App.tsx           # Streaming state management, party selection
+│           ├── types.ts          # TS interfaces, class colors
 │           └── components/
-│               ├── GameHeader.tsx   # Status badge, World/Model selectors, Run/Reset
-│               ├── DungeonMap.tsx   # SVG map with auto-layout, agent dots, room states
-│               ├── AgentPanel.tsx   # HP/MP bars, equipment, last action
-│               └── EventLog.tsx     # Color-coded live event stream
+│               ├── GameHeader.tsx    # Status, world/model selectors, controls
+│               ├── DungeonMap.tsx    # SVG map with auto-layout
+│               ├── AgentPanel.tsx    # HP/MP/AP bars, status effects, equipment
+│               ├── EventLog.tsx      # Color-coded event stream
+│               └── PartySelector.tsx # 6-class party picker
 └── neatMUD/                 # Legacy research codebase (2007-2009)
     ├── kinchoMUD/           # Original C++ MUD SDK with rtNEAT integration
-    │   ├── src/             # Battle, Mob, MobBrain, Chain, Room, etc.
-    │   ├── data/            # XML world definitions
-    │   └── docs/            # Research reports and proposals
     └── rtNEAT/              # Kenneth Stanley's rtNEAT neuroevolution library
 ```
 
@@ -176,7 +181,7 @@ export ANTHROPIC_API_KEY="your-api-key-here"
 curl -fsSL https://ollama.com/install.sh | sh
 
 # Pull a model
-ollama pull qwen2.5:7b
+ollama pull gemma3:4b
 
 # Set the backend
 export LLM_BACKEND=ollama
@@ -205,44 +210,9 @@ LLM_BACKEND=anthropic ./run.sh
 python main.py
 ```
 
-The simulation will run for up to 20 ticks (turns). Each tick, agents first communicate (warnings, coordination, intel), then act based on what they've witnessed. Watch as the AI-controlled party explores the dungeon!
-
-### Local LLM (Ollama)
-
-NachoMUD can run entirely locally using [Ollama](https://ollama.com) instead of the Anthropic API. This is free, requires no API key, and keeps all inference on your machine.
-
-**Setup:**
-```bash
-# Install Ollama (Linux/macOS)
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Pull the default model (~4GB)
-ollama pull qwen2.5:7b
-
-# Run with Ollama
-LLM_BACKEND=ollama python main.py
-```
-
-**Recommended models:**
-
-| Model | Size | Notes |
-|---|---|---|
-| `qwen2.5:7b` (default) | ~4GB VRAM | Good instruction following, handles structured output well |
-| `llama3.2:3b` | ~2GB VRAM | Lighter alternative for low-resource machines |
-
-**Environment variables:**
-
-| Variable | Default | Description |
-|---|---|---|
-| `LLM_BACKEND` | `ollama` | LLM backend: `anthropic` or `ollama` |
-| `AGENT_MODEL` | Backend-dependent | Model for agent decisions |
-| `NARRATOR_MODEL` | Backend-dependent | Model for narration and world generation |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL (for remote Ollama instances) |
-| `ANTHROPIC_API_KEY` | *(empty)* | Anthropic API key (required for `anthropic` backend) |
+The simulation will run for up to 20 ticks (turns). Each tick, agents first communicate (warnings, coordination, intel), then agents and mobs act in speed order based on what they've witnessed. Watch as the AI-controlled party explores the dungeon!
 
 ### Web Visualization
-
-NachoMUD includes a web-based simulation viewer that lets you run simulations and replay them tick-by-tick with an interactive dungeon map, agent stat panels, and a color-coded event log.
 
 **1. Install backend dependencies:**
 
@@ -272,7 +242,7 @@ cd web/backend && uvicorn server:app --port 4000
 ./run.sh
 ```
 
-Open `http://localhost:4000` and click **Run Simulation**.
+Open `http://localhost:4000`, select your party of 3, and click **Run Simulation**.
 
 For frontend development with hot reload, run the Vite dev server in a separate terminal:
 
@@ -284,28 +254,100 @@ cd web/backend && uvicorn server:app --port 4000
 cd web/frontend && npm run dev
 ```
 
-The Vite dev server proxies API requests to the backend automatically.
+### Running Tests
+
+```bash
+pytest tests/          # All 224 tests
+pytest tests/ -x       # Stop at first failure
+pytest tests/ -v       # Verbose output
+```
+
+### Local LLM (Ollama)
+
+NachoMUD can run entirely locally using [Ollama](https://ollama.com) instead of the Anthropic API. This is free, requires no API key, and keeps all inference on your machine.
+
+**Setup:**
+```bash
+# Install Ollama (Linux/macOS)
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull the default model (~2GB)
+ollama pull gemma3:4b
+
+# Run with Ollama
+LLM_BACKEND=ollama python main.py
+```
+
+**Recommended models:**
+
+| Model | Size | Notes |
+|---|---|---|
+| `gemma3:4b` (default) | ~2GB VRAM | Fast, good instruction following |
+| `gemma3:12b` | ~8GB VRAM | Better reasoning, recommended for challenging worlds |
+| `qwen2.5:7b` | ~4GB VRAM | Good structured output, handles complex prompts well |
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `LLM_BACKEND` | `ollama` | LLM backend: `anthropic` or `ollama` |
+| `AGENT_MODEL` | Backend-dependent | Model for agent and mob decisions |
+| `NARRATOR_MODEL` | Backend-dependent | Model for narration and world generation |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
+| `ANTHROPIC_API_KEY` | *(empty)* | Anthropic API key (required for `anthropic` backend) |
 
 ## Game Mechanics
 
-### Characters
+### Character Classes
 
-- **Kael** (Warrior): High HP, melee-focused, protective of allies
-- **Lyria** (Mage): Lower HP, magic-focused, support capabilities
-- **Finn** (Ranger): Balanced stats, scouts ahead, practical and observant
+| Class | HP | Resource | Speed | Role |
+|-------|-----|----------|-------|------|
+| **Warrior** | 25 | AP:10 | 3 | Tank/DPS. Cleave for AoE, taunt to protect allies, defend/rally for buffs |
+| **Paladin** | 20 | MP:8 | 3 | Tank/healer. Smite for holy damage, lay on hands for strong heals, shield to protect allies |
+| **Mage** | 8 | MP:25 | 4 | Glass cannon. Missile/arcane storm for magic damage, curse for DoT, barrier for defense |
+| **Cleric** | 14 | MP:18 | 3 | Primary healer. Heal/ward for sustain, holy bolt for damage, cure to remove debuffs |
+| **Ranger** | 14 | MP:10 | 5 | Ranged DPS/CC. Aimed shot for single-target, volley for AoE, poison/sleep for control |
+| **Rogue** | 12 | MP:8 | 6 | Fastest class. Backstab for burst damage (costs HP), bleed for DoT, evade/smoke bomb for survival |
 
-### Combat Actions
+### Abilities
 
-- `attack <mob>` - Melee attack using weapon ATK
-- `missile <mob>` - Single-target magic missile (1 MP, uses ring MDMG)
-- `fireball` - Area-of-effect spell hitting all mobs (3 MP, ring MDMG x2)
-- `poison <mob>` - Apply poison (2 MP, 1 damage/tick for 3 ticks)
-- `heal` - Restore 30% max HP (2 MP)
+**Damage:**
+- `attack` - Basic melee (weapon ATK vs PDEF, free)
+- `cleave` - AoE melee all mobs (3 AP, Warrior)
+- `smite` - Holy strike: ATK*1.5 vs MDEF (2 MP, Paladin)
+- `consecrate` - Holy AoE: ATK vs MDEF per mob (4 MP, Paladin)
+- `missile` - Magic missile: MDMG vs MDEF (1 MP, Mage)
+- `arcane_storm` - AoE: MDMG*2 vs MDEF per mob (4 MP, Mage)
+- `holy_bolt` - Holy bolt: MDMG*1.5 vs MDEF (2 MP, Cleric)
+- `aimed_shot` - ATK*2 vs PDEF (3 MP, Ranger)
+- `volley` - AoE: ATK vs PDEF per mob (3 MP, Ranger)
+- `backstab` - ATK*2.5, ignores defense (3 HP, Rogue)
+
+**Healing & Support:**
+- `heal` - Restore 30% max HP (2 MP, Cleric)
+- `lay_on_hands` - Restore 40% max HP (3 MP, Paladin)
+- `cure` - Remove all debuffs (1 MP, Cleric)
+
+**Buffs:**
+- `defend` - Reduce incoming damage by 50% for 1 tick (2 AP, Warrior)
+- `rally` - All allies deal +2 damage on next hit (4 AP, Warrior)
+- `ward` - Reduce damage by 3 for 3 ticks (2 MP, Cleric)
+- `barrier` - Absorb 8 damage (3 MP, Mage)
+- `evade` - Next attack deals 0 damage (2 HP, Rogue)
+- `shield` - Redirect next attack on ally to Paladin (2 MP, Paladin)
+
+**Debuffs & CC:**
+- `curse` - 2 dmg/tick for 3 ticks (2 MP, Mage)
+- `poison_arrow` - 2 dmg/tick for 3 ticks (2 MP, Ranger)
+- `bleed` - 2 dmg/tick for 3 ticks (2 MP, Rogue)
+- `taunt` - Force all mobs to target Warrior (2 AP, Warrior)
+- `sleep` - Target skips next 2 turns (3 MP, Ranger)
+- `smoke_bomb` - All mobs deal -3 damage for 2 ticks (3 MP, Rogue)
 
 ### Movement & Interaction
 
 - `n / s / e / w` - Move in cardinal directions
-- `get <item>` - Pick up loot (auto-equips if better)
+- `get <item>` - Pick up loot (auto-equips if better, respects class restrictions)
 
 ### Communication
 
@@ -315,32 +357,38 @@ Each tick begins with a **free communication phase** where agents can talk witho
 - `say <message>` - Speak to everyone in the room
 - `whisper <ally> <msg>` - Private message to an ally (only they hear)
 - `yell <message>` - Shout heard up to 3 rooms away (distance-dependent text)
-- `none` - Stay silent (nothing important to share)
+- `none` - Stay silent
 
-During the comm phase, only ally communication is allowed (no NPC tells — those stay in the action phase). Agents communicate sequentially, so later agents see what earlier agents said before deciding what to share.
+### Initiative System
 
-Yell distance: same room hears normally, adjacent rooms hear "from the north (Room Name)", 2-3 rooms away hear "in the distance".
+Each tick, all living entities (agents + mobs) act in speed order:
+1. Higher speed goes first (Rogue: 6, Ranger: 5, Mage: 4, others: 3)
+2. On ties: agents before mobs, then alphabetical
 
-Agents see their current room contents and exit names, so there is no `look` command -- they always know what's in their room.
+Warriors regenerate 3 AP per tick (capped at max). All other resource costs are paid from MP or HP.
+
+### Monster AI
+
+Mobs have their own LLM-driven turns:
+- Each mob has defined abilities (e.g., Goblin Shaman: attack, curse, heal)
+- Bosses always communicate before acting (taunts, threats)
+- Taunt enforcement: taunted mobs must attack the taunter
+- Sleep enforcement: sleeping mobs skip their turn entirely
 
 ### Equipment
 
-Items have four stats:
-- **ATK**: Physical attack damage (weapons)
-- **PDEF**: Physical defense (armor/rings)
-- **MDEF**: Magic defense (armor/rings)
-- **MDMG**: Magic damage (rings)
+Items have four stats: **ATK** (physical damage), **PDEF** (physical defense), **MDEF** (magic defense), **MDMG** (magic damage).
+
+Items can be restricted to certain classes via `allowed_classes`. Agents see `[CANNOT USE]` when viewing restricted items they can't equip.
 
 ## Configuration
 
 Edit `config.py` to customize:
 
-- `AGENT_TEMPLATES`: Character stats, personality, starting equipment
-- `MAX_TICKS`: Maximum game length
-- `SPELL_COSTS`: Magic point costs for spells
-- `HEAL_PERCENT`: Healing spell effectiveness
-- `POISON_DURATION` / `POISON_DAMAGE`: Status effect parameters
-- `NARRATOR_MODEL` / `AGENT_MODEL`: Claude model versions to use
+- `CLASS_DEFINITIONS`: 6 character classes with stats, abilities, default names, equipment
+- `ABILITY_DEFINITIONS`: 24 abilities with costs, target types, descriptions
+- `MAX_TICKS`: Maximum game length (default: 20)
+- `AGENT_MODEL` / `NARRATOR_MODEL`: LLM model selection
 
 ## Worlds
 
@@ -353,18 +401,17 @@ NachoMUD ships with 4 hand-crafted worlds, each with a distinct topology designe
 | **The Serpent's Mire** | 12 | Ring/loop (multiple routes to boss) | Naga Sorceress Ssythara |
 | **The Ember Hollows** | 14 | Wide branching tree (split/reconverge) | Magma Drake Pyraxis |
 
-World files live in `data/worlds/` as JSON. Each file contains a `meta` block (name, description) and a `rooms` array. To add a new world, create a JSON file in `data/worlds/` — it will automatically appear in the UI's world selector dropdown.
-
-Simulation logs are written to `data/logs/` for each run.
+World files live in `data/worlds/` as JSON. Each file contains a `meta` block (name, description) and a `rooms` array with mobs that have abilities, speed, personality, and defense stats. To add a new world, create a JSON file in `data/worlds/` -- it will automatically appear in the UI's world selector dropdown.
 
 ## Technology
 
-- **Claude AI or Ollama**: Powers all agent decisions and narration (configurable via `LLM_BACKEND`)
+- **Claude AI or Ollama**: Powers all agent and mob decisions plus narration (configurable via `LLM_BACKEND`)
 - **Python 3.10+**: Core language
 - **Anthropic SDK**: Integration with Claude API
 - **Ollama**: Local LLM inference (optional)
 - **FastAPI + Uvicorn**: Web visualization backend
 - **React + TypeScript + Tailwind CSS**: Web visualization frontend (Vite build)
+- **pytest**: 224 tests covering all game systems
 
 ## Requirements
 

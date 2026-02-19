@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { RoomInfo, AgentSnapshot, RoomSnapshot, AGENT_COLORS } from "../types";
+import { RoomInfo, AgentSnapshot, RoomSnapshot, getAgentColor } from "../types";
 
 interface DungeonMapProps {
   rooms: RoomInfo[];
@@ -264,7 +264,7 @@ export default function DungeonMap({ rooms, agentStates, roomStates }: DungeonMa
               </text>
               {/* Agent dots */}
               {agents.map((agent, i) => {
-                const color = AGENT_COLORS[agent.name]?.dot || "#fff";
+                const color = getAgentColor(agent).dot;
                 const dotX = pos.x + ROOM_W / 2 + (i - (agents.length - 1) / 2) * 14;
                 const dotY = pos.y + 40;
                 return (

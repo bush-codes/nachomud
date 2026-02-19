@@ -1,30 +1,39 @@
 import React, { useEffect, useRef } from "react";
-import { GameEventData, AGENT_COLORS } from "../types";
+import { GameEventData, AGENT_COLORS, getAgentColor } from "../types";
 
 interface EventLogProps {
   events: GameEventData[];
 }
 
+// Special non-agent sources that appear in events
+const SPECIAL_COLORS: Record<string, string> = {
+  poison: "text-purple-400",
+  system: "text-amber-500",
+  effect: "text-purple-400",
+};
+
 function getEventColor(agent: string): string {
-  const colors = AGENT_COLORS[agent];
-  if (colors) return colors.text;
-  if (agent === "poison") return "text-purple-400";
-  if (agent === "system") return "text-amber-500";
-  return "text-gray-400";
+  if (SPECIAL_COLORS[agent]) return SPECIAL_COLORS[agent];
+  // Known player agents get class color
+  if (AGENT_COLORS[agent]) return getAgentColor({ name: agent }).text;
+  // Mob names get red
+  return "text-red-400";
 }
 
 function getEventIcon(action: string): string {
   if (action.startsWith("move")) return "\u2192";
-  if (action.startsWith("attack")) return "\u2694\ufe0f";
-  if (action.startsWith("missile") || action.startsWith("fireball")) return "\u2728";
-  if (action.startsWith("poison")) return "\u2620\ufe0f";
-  if (action === "heal") return "\u2764\ufe0f";
+  if (["attack", "cleave", "backstab", "aimed_shot"].includes(action)) return "\u2694\ufe0f";
+  if (["missile", "arcane_storm", "holy_bolt", "smite", "consecrate", "volley"].includes(action)) return "\u2728";
+  if (["poison_arrow", "bleed", "curse"].includes(action)) return "\u2620\ufe0f";
+  if (["heal", "lay_on_hands", "cure"].includes(action)) return "\u2764\ufe0f";
+  if (["defend", "ward", "barrier", "shield", "evade"].includes(action)) return "\ud83d\udee1\ufe0f";
+  if (["taunt", "rally", "sleep", "smoke_bomb"].includes(action)) return "\u2728";
   if (action === "look") return "\ud83d\udc41\ufe0f";
   if (action.startsWith("get")) return "\ud83c\udfaf";
-  if (action.startsWith("tell") || action === "say") return "\ud83d\udcac";
+  if (action.startsWith("tell") || action === "say" || action === "whisper" || action === "yell") return "\ud83d\udcac";
   if (action === "think") return "\ud83d\udca1";
-  if (action === "counterattack") return "\u26a1";
-  if (action === "tick") return "\u2623\ufe0f";
+  if (action === "mob_action" || action === "mob_comm") return "\ud83d\udc79";
+  if (action === "tick" || action === "effect") return "\u2623\ufe0f";
   if (action === "system") return "\u2699\ufe0f";
   return "\u25b6";
 }

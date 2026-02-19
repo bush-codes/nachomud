@@ -19,6 +19,7 @@ def _parse_item(data: dict) -> Item:
         pdef=data.get("pdef", 0),
         mdef=data.get("mdef", 0),
         mdmg=data.get("mdmg", 0),
+        allowed_classes=data.get("allowed_classes", None),
     )
 
 
@@ -30,8 +31,12 @@ def _parse_mob(data: dict) -> Mob:
         max_hp=data["max_hp"],
         atk=data["atk"],
         mdef=data.get("mdef", 0),
+        pdef=data.get("pdef", 0),
         is_boss=data.get("is_boss", False),
         loot=loot,
+        speed=data.get("speed", 3),
+        abilities=data.get("abilities", ["attack"]),
+        personality=data.get("personality", ""),
     )
 
 
@@ -113,6 +118,9 @@ def build_world(world_id: str = "shadowfell") -> dict[str, Room]:
             items=items,
             visited=bool(description),
         )
+        # Set mob room_ids so initiative system can find them
+        for mob in mobs:
+            mob.room_id = room.id
         rooms[room.id] = room
 
     # Validate bidirectional exits
@@ -181,8 +189,12 @@ def get_room_state(room: Room, agent_names_here: list[str]) -> str:
     return "\n".join(parts)
 
 
-def _item_stat_str(item: "Item") -> str:
-    """Short stat string for an item: 'Rusty Sword (weapon, ATK:3)'."""
+def _item_stat_str(item: "Item", agent_class: str = "") -> str:
+    """Short stat string for an item: 'Rusty Sword (weapon, ATK:3)'.
+
+    If agent_class is provided and the item has allowed_classes that don't
+    include the agent's class, appends [CANNOT USE].
+    """
     stats = []
     if item.atk:
         stats.append(f"ATK:{item.atk}")
@@ -192,7 +204,10 @@ def _item_stat_str(item: "Item") -> str:
         stats.append(f"MDEF:{item.mdef}")
     if item.mdmg:
         stats.append(f"MDMG:{item.mdmg}")
-    return f"{item.name} ({item.slot}, {', '.join(stats)})" if stats else f"{item.name} ({item.slot})"
+    base = f"{item.name} ({item.slot}, {', '.join(stats)})" if stats else f"{item.name} ({item.slot})"
+    if agent_class and item.allowed_classes and agent_class not in item.allowed_classes:
+        base += " [CANNOT USE]"
+    return base
 
 
 def build_sensory_context(
@@ -201,6 +216,7 @@ def build_sensory_context(
     rooms: dict[str, "Room"],
     agent_name: str,
     visited_rooms: list[str] | None = None,
+    agent_class: str = "",
 ) -> str:
     """Build full sensory awareness: current room, adjacent rooms, allies."""
     parts = [f"You are in: {room.name}"]
@@ -217,7 +233,7 @@ def build_sensory_context(
 
     # Items with stats so agent can compare against equipment
     if room.items:
-        item_strs = [_item_stat_str(i) for i in room.items]
+        item_strs = [_item_stat_str(i, agent_class) for i in room.items]
         parts.append(f"Items on ground: {', '.join(item_strs)}")
     else:
         parts.append("Items on ground: none")

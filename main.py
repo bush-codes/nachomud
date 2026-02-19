@@ -1,48 +1,28 @@
 from __future__ import annotations
 
-import sys
+import argparse
+import json
+import os
+from datetime import datetime
 
+import config
 from agent import get_agent_action, get_agent_comm, parse_action
-from combat import (
-    resolve_attack,
-    resolve_fireball,
-    resolve_heal,
-    resolve_missile,
-    resolve_poison,
-    tick_poison,
+from effects import tick_effects
+from engine import (
+    agents_in_room,
+    all_agents_dead,
+    build_initiative_order,
+    check_boss_defeated,
+    create_agents,
+    regen_warrior_ap,
+    resolve_action,
+    witness_events,
+    witness,
 )
-from config import ACTION_HISTORY_SIZE, AGENT_TEMPLATES, COMM_HISTORY_SIZE, LORE_HISTORY_SIZE, MAX_TICKS
-from models import AgentState, GameEvent, Item, Room
-from narrator import narrate_combat, narrate_npc_dialogue, summarize_npc_dialogue
-from world import build_sensory_context, build_world, describe_room, list_worlds
-
-DIRECTION_NAMES = {"n": "north", "s": "south", "e": "east", "w": "west"}
-OPPOSITE_DIRECTION = {"n": "south", "s": "north", "e": "west", "w": "east"}
-
-
-def rooms_within_range(start_room_id: str, rooms: dict[str, Room], max_hops: int = 3) -> dict[str, tuple[int, str]]:
-    """BFS from start_room_id, returning {room_id: (distance, direction_from)}.
-
-    direction_from is the direction the yell came FROM (opposite of the exit
-    taken), so an adjacent room to the north gets direction_from="south"
-    meaning the yell came from the south.
-    """
-    from collections import deque
-    visited: dict[str, tuple[int, str]] = {start_room_id: (0, "")}
-    queue: deque[str] = deque([start_room_id])
-    while queue:
-        current = queue.popleft()
-        dist, _ = visited[current]
-        if dist >= max_hops:
-            continue
-        room = rooms[current]
-        for direction, neighbor_id in room.exits.items():
-            if neighbor_id not in visited:
-                # The yell came FROM the opposite direction
-                from_dir = OPPOSITE_DIRECTION.get(direction, direction)
-                visited[neighbor_id] = (dist + 1, from_dir)
-                queue.append(neighbor_id)
-    return visited
+from mob_ai import get_mob_action, get_mob_comm, resolve_mob_ability
+from models import AgentState, GameEvent, Mob
+from narrator import narrate_combat
+from world import build_sensory_context, build_world, describe_room
 
 # Force unbuffered output so the game can be watched live
 _builtin_print = print
@@ -53,244 +33,80 @@ def print(*args, **kwargs):
     _builtin_print(*args, **kwargs)
 
 
-def create_agents() -> list[AgentState]:
-    agents = []
-    for t in AGENT_TEMPLATES:
-        agent = AgentState(
-            name=t["name"],
-            personality=t["personality"],
-            agent_class=t["agent_class"],
-            hp=t["hp"],
-            max_hp=t["max_hp"],
-            mp=t["mp"],
-            max_mp=t["max_mp"],
-            weapon=Item(**t["weapon"]),
-            armor=Item(**t["armor"]),
-            ring=Item(**t["ring"]),
-            room_id="room_1",
-        )
-        agents.append(agent)
-    return agents
-
-
-def agents_in_room(agents: list[AgentState], room_id: str, exclude: str = "") -> list[str]:
-    return [a.name for a in agents if a.alive and a.room_id == room_id and a.name != exclude]
-
-
-def resolve_action(
-    agent: AgentState,
-    cmd: str,
-    arg: str,
-    rooms: dict[str, Room],
-    agents: list[AgentState],
-    tick: int,
-) -> list[GameEvent]:
-    events = []
-    room = rooms[agent.room_id]
-
-    if cmd in ("n", "s", "e", "w"):
-        if cmd in room.exits:
-            old_room = room.name
-            new_room_id = room.exits[cmd]
-            agent.room_id = new_room_id
-            new_room = rooms[new_room_id]
-            # Generate description on first visit
-            describe_room(new_room)
-            direction = DIRECTION_NAMES.get(cmd, cmd)
-            result = f"{agent.name} moves {direction} to {new_room.name}."
-            others = agents_in_room(agents, new_room_id, agent.name)
-            mobs_here = [m for m in new_room.mobs if m.hp > 0]
-            if others:
-                result += f" Sees: {', '.join(others)}."
-            if mobs_here:
-                result += f" Enemies: {', '.join(m.name for m in mobs_here)}."
-            events.append(GameEvent(tick, agent.name, f"move {cmd}", result, new_room_id))
-        else:
-            events.append(GameEvent(tick, agent.name, f"move {cmd}",
-                                    f"No exit to the {DIRECTION_NAMES.get(cmd, cmd)}.", agent.room_id))
-
-    elif cmd == "attack":
-        events.extend(resolve_attack(agent, room, arg, tick, agents))
-
-    elif cmd == "missile":
-        events.extend(resolve_missile(agent, room, arg, tick, agents))
-
-    elif cmd == "fireball":
-        events.extend(resolve_fireball(agent, room, tick))
-
-    elif cmd == "poison":
-        events.extend(resolve_poison(agent, room, arg, tick, agents))
-
-    elif cmd == "heal":
-        events.extend(resolve_heal(agent, tick, arg, agents, room))
-
-    elif cmd in ("tell", "talk"):
-        # First word is the target name, rest is the message
-        parts = arg.split(None, 1)
-        target_name = parts[0].lower() if parts else ""
-        message = parts[1] if len(parts) > 1 else ""
-
-        # Check NPCs
-        npc = None
-        for n in room.npcs:
-            if target_name in n.name.lower():
-                npc = n
-                break
-        if npc:
-            if npc.interactions_left > 0:
-                npc.interactions_left -= 1
-                dialogue = narrate_npc_dialogue(npc.name, npc.title, npc.dialogue, agent.name)
-                result = f"{npc.name} says: {dialogue}"
-                # Summarize for witnessed history so NPC dialogue doesn't dominate
-                summary = summarize_npc_dialogue(npc.name, dialogue)
-                witness = f"{npc.name} says: {summary}"
-                if npc.item and not npc.item_given:
-                    agent.inventory.append(npc.item)
-                    equip_item(agent, npc.item)
-                    result += f"\n  {npc.name} gives {agent.name} a {npc.item.name}!"
-                    witness += f" {npc.name} gives {agent.name} a {npc.item.name}."
-                    npc.item_given = True
-            else:
-                result = f"{npc.name} has nothing more to say."
-                witness = ""
-            events.append(GameEvent(tick, agent.name, f"tell {npc.name}", result, agent.room_id, witness_text=witness, category="lore"))
-        else:
-            # Check agents in the room
-            target_agent = None
-            for a in agents:
-                if a.alive and a.room_id == agent.room_id and a.name != agent.name and target_name in a.name.lower():
-                    target_agent = a
-                    break
-            if target_agent:
-                result = f'{agent.name} tells {target_agent.name}: "{message}"'
-                events.append(GameEvent(tick, agent.name, f"tell {target_agent.name}", result, agent.room_id, category="comm"))
-            else:
-                others = agents_in_room(agents, agent.room_id, agent.name)
-                npcs_here = [n.name for n in room.npcs]
-                available = others + npcs_here
-                if available:
-                    result = f"No one named '{target_name}' here. You can talk to: {', '.join(available)}."
-                else:
-                    result = f"No one named '{target_name}' here. There is nobody to talk to in this room."
-                events.append(GameEvent(tick, agent.name, f"tell {target_name}", result, agent.room_id))
-
-    elif cmd == "say":
-        others = agents_in_room(agents, agent.room_id, agent.name)
-        if others:
-            result = f'{agent.name} says: "{arg}" (heard by {", ".join(others)})'
-        else:
-            result = f'{agent.name} says: "{arg}" (nobody else is here)'
-        events.append(GameEvent(tick, agent.name, "say", result, agent.room_id, category="comm"))
-
-    elif cmd == "whisper":
-        parts = arg.split(None, 1)
-        target_name = parts[0].lower() if parts else ""
-        message = parts[1] if len(parts) > 1 else ""
-        target_agent = None
-        for a in agents:
-            if a.alive and a.room_id == agent.room_id and a.name != agent.name and target_name in a.name.lower():
-                target_agent = a
-                break
-        if target_agent:
-            result = f'{agent.name} whispers to {target_agent.name}: "{message}"'
-            events.append(GameEvent(tick, agent.name, f"whisper {target_agent.name}", result, agent.room_id, category="comm"))
-        else:
-            others = agents_in_room(agents, agent.room_id, agent.name)
-            if others:
-                result = f"No ally named '{target_name}' here. Allies in room: {', '.join(others)}."
-            else:
-                result = f"No ally named '{target_name}' here. You are alone."
-            events.append(GameEvent(tick, agent.name, f"whisper {target_name}", result, agent.room_id))
-
-    elif cmd == "yell":
-        result = f'{agent.name} yells: "{arg}"'
-        events.append(GameEvent(tick, agent.name, "yell", result, agent.room_id, category="comm"))
-
-    elif cmd in ("get", "take", "pick"):
-        # Normalize: "pick up X" -> arg="up X", strip the "up"
-        if cmd == "pick" and arg.lower().startswith("up "):
-            arg = arg[3:]
-        item = None
-        arg_lower = arg.lower()
-        for i in room.items:
-            if arg_lower in i.name.lower():
-                item = i
-                break
-        if item:
-            room.items.remove(item)
-            agent.inventory.append(item)
-            equip_item(agent, item)
-            result = f"{agent.name} picks up {item.name}."
-            if item.slot == "weapon" and agent.weapon == item:
-                result += f" Equipped as weapon (ATK:{item.atk})."
-            elif item.slot == "armor" and agent.armor == item:
-                result += f" Equipped as armor (PDEF:{item.pdef})."
-            elif item.slot == "ring" and agent.ring == item:
-                result += f" Equipped as ring (MDMG:{item.mdmg})."
-            events.append(GameEvent(tick, agent.name, f"get {item.name}", result, agent.room_id))
-        else:
-            available = [i.name for i in room.items]
-            if available:
-                result = f"No item named '{arg}' here. Items available: {', '.join(available)}."
-            else:
-                result = f"No item named '{arg}' here. There are no items to pick up in this room."
-            events.append(GameEvent(tick, agent.name, f"get {arg}", result, agent.room_id))
-
-    else:
-        events.append(GameEvent(tick, agent.name, cmd,
-                                f"Unknown command: {cmd}", agent.room_id))
-
-    return events
-
-
-def equip_item(agent: AgentState, item: Item) -> None:
-    if item.slot == "weapon" and item.atk > agent.weapon.atk:
-        agent.weapon = item
-    elif item.slot == "armor" and item.pdef > agent.armor.pdef:
-        agent.armor = item
-    elif item.slot == "ring" and item.mdmg > agent.ring.mdmg:
-        agent.ring = item
-
-
-def check_boss_defeated(rooms: dict[str, Room]) -> bool:
-    for room in rooms.values():
-        for mob in room.mobs:
-            if mob.is_boss and mob.hp <= 0:
-                return True
-    return False
-
-
-def all_agents_dead(agents: list[AgentState]) -> bool:
-    return all(not a.alive for a in agents)
-
-
 def print_tick_header(tick: int) -> None:
     print(f"\n{'═' * 40}")
     print(f"  TICK {tick}")
     print(f"{'═' * 40}\n")
 
 
-def print_agent_events(agent: AgentState, events: list[GameEvent], rooms: dict[str, Room]) -> None:
-    room = rooms[agent.room_id]
-    print(f"[{agent.name} the {agent.agent_class}] in {room.name}")
-    for e in events:
-        if e.agent == agent.name or "counterattack" in e.action or e.agent == "poison":
-            for line in e.result.split("\n"):
-                print(f"  > {line}")
-    print()
+# ── JSON log helpers ──────────────────────────────────────────────────
+
+def _agent_snapshot(agent: AgentState) -> dict:
+    return {
+        "name": agent.name,
+        "agent_class": agent.agent_class,
+        "hp": agent.hp,
+        "max_hp": agent.max_hp,
+        "mp": agent.mp,
+        "max_mp": agent.max_mp,
+        "ap": agent.ap,
+        "max_ap": agent.max_ap,
+        "speed": agent.speed,
+        "room_id": agent.room_id,
+        "alive": agent.alive,
+        "weapon": agent.weapon.name,
+        "armor": agent.armor.name,
+        "ring": agent.ring.name,
+        "status_effects": [
+            {"name": se.name, "remaining_ticks": se.remaining_ticks, "value": se.value}
+            for se in agent.status_effects
+        ],
+    }
+
+
+def _event_to_dict(event: GameEvent) -> dict:
+    return {
+        "agent": event.agent,
+        "action": event.action,
+        "result": event.result,
+        "room_id": event.room_id,
+        "category": event.category,
+    }
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="NachoMUD - AI Dungeon Crawler")
+    parser.add_argument("--world", default="shadowfell",
+                        help="World ID (shadowfell, frostpeak, serpentmire, emberhollows)")
+    parser.add_argument("--model", default=None,
+                        help="LLM model override (e.g. gemma3:4b, gemma3:12b)")
+    parser.add_argument("--max-ticks", type=int, default=config.MAX_TICKS,
+                        help=f"Max simulation ticks (default: {config.MAX_TICKS})")
+    parser.add_argument("--party", default="Warrior,Mage,Ranger",
+                        help="Comma-separated class names, max 3 (default: Warrior,Mage,Ranger)")
+    return parser.parse_args()
 
 
 def main() -> None:
+    args = parse_args()
+
+    # Override config before game loop
+    if args.model:
+        config.AGENT_MODEL = args.model
+    max_ticks = args.max_ticks
+    party_list = [c.strip() for c in args.party.split(",") if c.strip() in config.CLASS_DEFINITIONS]
+    if not party_list:
+        party_list = ["Warrior", "Mage", "Ranger"]
+
     print("=" * 50)
     print("  NachoMUD - Multi-Agent LLM Dungeon")
-    print("  A Shadowfell Rift threatens Aeldrath...")
+    print(f"  World: {args.world} | Model: {config.AGENT_MODEL} | Ticks: {max_ticks}")
+    print(f"  Party: {', '.join(party_list)}")
     print("=" * 50)
     print()
 
-    # Build world
-    rooms = build_world()
+    rooms = build_world(args.world)
 
-    # Print room map
     print("\n--- DUNGEON MAP ---")
     for room_id, room in sorted(rooms.items()):
         exits = ", ".join(f"{d}->{tid}" for d, tid in room.exits.items())
@@ -299,14 +115,13 @@ def main() -> None:
         print(f"  {room_id}: {room.name} | exits: {exits} | mobs: {mobs} | npcs: {npcs}")
     print("-------------------\n")
 
-    # Create agents
-    agents = create_agents()
+    agents = create_agents(party_list)
     print("Heroes summoned:")
     for a in agents:
-        print(f"  {a.name} the {a.agent_class} - HP:{a.hp}/{a.max_hp} MP:{a.mp}/{a.max_mp}")
+        resource = f"AP:{a.ap}/{a.max_ap}" if a.agent_class == "Warrior" else f"MP:{a.mp}/{a.max_mp}"
+        print(f"  {a.name} the {a.agent_class} - HP:{a.hp}/{a.max_hp} {resource} SPD:{a.speed}")
     print()
 
-    # Describe starting room and track as visited
     start_room = rooms["room_1"]
     describe_room(start_room)
     for a in agents:
@@ -314,64 +129,48 @@ def main() -> None:
     print(f"Starting location: {start_room.name}")
     print(f"  {start_room.description}\n")
 
-    def _witness(event_text: str, room_id: str, acting_agent_name: str = "", history: str = "action", skip_sender: bool = False) -> None:
-        """Append an event to the appropriate history of all agents in the given room."""
-        for a in agents:
-            if a.alive and a.room_id == room_id:
-                if skip_sender and a.name == acting_agent_name:
-                    continue
-                text = f">> {event_text}" if a.name == acting_agent_name else event_text
-                if history == "comm":
-                    a.comm_history.append(text)
-                    a.comm_history = a.comm_history[-COMM_HISTORY_SIZE:]
-                elif history == "lore":
-                    a.lore_history.append(text)
-                    a.lore_history = a.lore_history[-LORE_HISTORY_SIZE:]
-                else:
-                    a.action_history.append(text)
-                    a.action_history = a.action_history[-ACTION_HISTORY_SIZE:]
+    # ── JSON log setup ────────────────────────────────────────────────
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    sim_log = {
+        "meta": {
+            "timestamp": timestamp,
+            "world_id": args.world,
+            "model": config.AGENT_MODEL,
+            "max_ticks": max_ticks,
+            "party": party_list,
+            "outcome": "timeout",
+            "total_ticks": 0,
+        },
+        "agents_initial": [_agent_snapshot(a) for a in agents],
+        "ticks": [],
+        "final_agent_states": [],
+    }
 
-    def _witness_private(event_text: str, acting_agent_name: str, target_agent_name: str) -> None:
-        """Only sender (with >>) and target see the event. Always comm history."""
-        for a in agents:
-            if a.name == acting_agent_name:
-                a.comm_history.append(f">> {event_text}")
-                a.comm_history = a.comm_history[-COMM_HISTORY_SIZE:]
-            elif a.name == target_agent_name and a.alive:
-                a.comm_history.append(event_text)
-                a.comm_history = a.comm_history[-COMM_HISTORY_SIZE:]
+    outcome = "timeout"
 
-    def _witness_yell(agent_name: str, message: str, source_room_id: str) -> None:
-        """BFS broadcast with distance-dependent text formatting. Always comm history."""
-        reachable = rooms_within_range(source_room_id, rooms, max_hops=3)
-        source_room = rooms[source_room_id]
-        for room_id, (dist, from_dir) in reachable.items():
-            if dist == 0:
-                text = f'{agent_name} yells: "{message}"'
-            elif dist == 1:
-                text = f'{agent_name} yells from the {from_dir} ({source_room.name}): "{message}"'
-            else:
-                text = f'{agent_name} yells in the distance: "{message}"'
-            for a in agents:
-                if a.alive and a.room_id == room_id:
-                    if a.name == agent_name:
-                        continue  # sender already knows what they yelled
-                    a.comm_history.append(text)
-                    a.comm_history = a.comm_history[-COMM_HISTORY_SIZE:]
-
-    for tick in range(1, MAX_TICKS + 1):
+    for tick in range(1, max_ticks + 1):
         print_tick_header(tick)
 
         all_tick_events: list[GameEvent] = []
+        tick_log: dict = {
+            "tick": tick,
+            "comm_phase": [],
+            "mob_comms": [],
+            "action_phase": [],
+            "effect_events": [],
+            "agent_states_end": [],
+        }
 
-        # ── Communication phase ──
-        for agent in agents:
-            if not agent.alive:
-                continue
+        # Build initiative order
+        initiative = build_initiative_order(agents, rooms)
+        agent_order = [e for e in initiative if isinstance(e, AgentState)]
+        mob_order = [e for e in initiative if isinstance(e, Mob)]
 
+        # ── Communication phase (agents + mob bosses) ──
+        for agent in agent_order:
             room = rooms[agent.room_id]
             others = agents_in_room(agents, agent.room_id, agent.name)
-            sensory = build_sensory_context(room, [agent.name] + others, rooms, agent.name, agent.visited_rooms)
+            sensory = build_sensory_context(room, [agent.name] + others, rooms, agent.name, agent.visited_rooms, agent_class=agent.agent_class)
 
             try:
                 comm_think, comm_action = get_agent_comm(agent, sensory, others, room=room, allies=agents)
@@ -384,6 +183,12 @@ def main() -> None:
 
             if comm_action is None:
                 print(f"[{agent.name}] Comm: (silent)")
+                tick_log["comm_phase"].append({
+                    "agent": agent.name,
+                    "think": comm_think or "",
+                    "action": None,
+                    "result": None,
+                })
                 continue
 
             print(f"[{agent.name}] Comm: {comm_action}")
@@ -393,102 +198,183 @@ def main() -> None:
             events = resolve_action(agent, cmd, arg, rooms, agents, tick)
             all_tick_events.extend(events)
 
-            for e in events:
-                result_line = e.witness_text or e.result.split("\n")[0]
-                if e.action.startswith("whisper"):
-                    target_name = e.action.split(None, 1)[1] if " " in e.action else ""
-                    _witness_private(result_line, agent.name, target_name)
-                elif e.action == "yell":
-                    _witness_yell(agent.name, arg, pre_action_room)
-                elif e.action == "say":
-                    _witness(result_line, agent.room_id, agent.name, history="comm", skip_sender=True)
-                else:
-                    _witness(result_line, agent.room_id, agent.name, history=e.category)
+            witness_events(agents, rooms, events, agent, cmd, arg, comm_action, pre_action_room)
+
+            result_text = "; ".join(e.result for e in events) if events else ""
+            tick_log["comm_phase"].append({
+                "agent": agent.name,
+                "think": comm_think or "",
+                "action": comm_action,
+                "result": result_text,
+            })
 
             for e in events:
                 for line in e.result.split("\n"):
                     print(f"  > {line}")
             print()
 
-        # ── Action phase ──
-        for agent in agents:
-            if not agent.alive:
+        # Mob comm phase
+        for mob in mob_order:
+            if mob.hp <= 0:
+                continue
+            room = rooms.get(mob.room_id)
+            if not room:
+                continue
+            try:
+                comm = get_mob_comm(mob, room, agents)
+            except Exception as e:
+                print(f"  [ERROR] {mob.name} comm failed: {e}")
                 continue
 
-            room = rooms[agent.room_id]
-            others = agents_in_room(agents, agent.room_id, agent.name)
-            sensory = build_sensory_context(room, [agent.name] + others, rooms, agent.name, agent.visited_rooms)
+            if comm:
+                print(f"[{mob.name}] says: \"{comm}\"")
+                event = GameEvent(tick, mob.name, "say", f'{mob.name} says: "{comm}"', mob.room_id, category="comm")
+                all_tick_events.append(event)
+                witness(agents, event.result, mob.room_id, history="comm")
+                tick_log["mob_comms"].append({"mob": mob.name, "text": comm})
 
-            # Get action from LLM
-            try:
-                think, action_str, retries = get_agent_action(agent, sensory, room=room, allies=agents)
-            except Exception as e:
-                print(f"  [ERROR] {agent.name} agent failed: {e}")
-                think, action_str, retries = "", "say I'm not sure what to do.", []
+        # ── Action phase (interleaved agents + mobs in speed order) ──
+        for entity in initiative:
+            if isinstance(entity, AgentState):
+                if not entity.alive:
+                    continue
+                agent = entity
+                room = rooms[agent.room_id]
+                others = agents_in_room(agents, agent.room_id, agent.name)
+                sensory = build_sensory_context(room, [agent.name] + others, rooms, agent.name, agent.visited_rooms, agent_class=agent.agent_class)
 
-            cmd, arg = parse_action(action_str)
-            if think:
-                print(f"[{agent.name}] Think: {think}")
-            for r in retries:
-                print(f"[{agent.name}] Retry: '{r}' was invalid")
-            print(f"[{agent.name}] Action: {action_str}")
+                hp_before = agent.hp
 
-            # Track the room the agent is in BEFORE the action (for witnessing)
-            pre_action_room = agent.room_id
+                try:
+                    think, action_str, retries = get_agent_action(agent, sensory, room=room, allies=agents)
+                except Exception as e:
+                    print(f"  [ERROR] {agent.name} agent failed: {e}")
+                    think, action_str, retries = "", "say I'm not sure what to do.", []
 
-            # Resolve action
-            events = resolve_action(agent, cmd, arg, rooms, agents, tick)
-            all_tick_events.extend(events)
+                cmd, arg = parse_action(action_str)
+                if think:
+                    print(f"[{agent.name}] Think: {think}")
+                for r in retries:
+                    print(f"[{agent.name}] Retry: '{r}' was invalid")
+                print(f"[{agent.name}] Action: {action_str}")
 
-            # Track last action
-            agent.last_action = action_str
-            agent.last_result = events[0].result.split("\n")[0] if events else ""
+                pre_action_room = agent.room_id
 
-            # Track visited rooms on movement
-            if events and events[0].action.startswith("move"):
-                new_room = rooms[agent.room_id]
-                if new_room.name not in agent.visited_rooms:
-                    agent.visited_rooms.append(new_room.name)
+                events = resolve_action(agent, cmd, arg, rooms, agents, tick)
+                all_tick_events.extend(events)
 
-            # Witnessed events: everyone in the room sees the result
-            for e in events:
-                result_line = e.witness_text or e.result.split("\n")[0]
-                if e.action.startswith("move"):
-                    # Old room: others see departure
-                    _witness(f"{agent.name} leaves heading {DIRECTION_NAMES.get(cmd, cmd)}", pre_action_room)
-                    # New room: others see arrival from the opposite direction
-                    arrival_dir = OPPOSITE_DIRECTION.get(cmd, "somewhere")
-                    for a in agents:
-                        if a.alive and a.room_id == agent.room_id and a.name != agent.name:
-                            a.action_history.append(f"{agent.name} arrives from the {arrival_dir}")
-                            a.action_history = a.action_history[-ACTION_HISTORY_SIZE:]
-                    # Moving agent: own action
-                    agent.action_history.append(f">> {action_str} → {result_line}")
-                    agent.action_history = agent.action_history[-ACTION_HISTORY_SIZE:]
-                elif e.action.startswith("whisper"):
-                    target_name = e.action.split(None, 1)[1] if " " in e.action else ""
-                    _witness_private(result_line, agent.name, target_name)
-                elif e.action == "yell":
-                    _witness_yell(agent.name, arg, pre_action_room)
-                elif e.action == "say":
-                    _witness(result_line, agent.room_id, agent.name, history="comm", skip_sender=True)
-                else:
-                    _witness(result_line, agent.room_id, agent.name, history=e.category)
+                agent.last_action = action_str
+                agent.last_result = events[0].result.split("\n")[0] if events else ""
 
-            # Print events
-            print_agent_events(agent, events, rooms)
+                if events and events[0].action.startswith("move"):
+                    new_room = rooms[agent.room_id]
+                    if new_room.name not in agent.visited_rooms:
+                        agent.visited_rooms.append(new_room.name)
 
+                witness_events(agents, rooms, events, agent, cmd, arg, action_str, pre_action_room)
 
-        # Poison ticks for all rooms with poisoned mobs
+                room = rooms[agent.room_id]
+                print(f"[{agent.name} the {agent.agent_class}] in {room.name}")
+                for e in events:
+                    if e.agent == agent.name or e.agent == "poison":
+                        for line in e.result.split("\n"):
+                            print(f"  > {line}")
+                print()
+
+                result_text = "; ".join(e.result for e in events) if events else ""
+                tick_log["action_phase"].append({
+                    "entity_type": "agent",
+                    "name": agent.name,
+                    "agent_class": agent.agent_class,
+                    "room_id": agent.room_id,
+                    "think": think or "",
+                    "action": action_str,
+                    "cmd": cmd,
+                    "arg": arg or "",
+                    "retries": retries,
+                    "result": result_text,
+                    "hp_before": hp_before,
+                    "hp_after": agent.hp,
+                })
+
+            elif isinstance(entity, Mob):
+                mob = entity
+                if mob.hp <= 0:
+                    continue
+                room = rooms.get(mob.room_id)
+                if not room:
+                    continue
+
+                hp_before = mob.hp
+
+                try:
+                    cmd, arg = get_mob_action(mob, room, agents, rooms, tick)
+                except Exception as e:
+                    print(f"  [ERROR] {mob.name} action failed: {e}")
+                    continue
+
+                if not cmd:
+                    continue  # mob skipped (asleep, no targets, etc.)
+
+                print(f"[{mob.name}] Action: {cmd} {arg}")
+
+                events = resolve_mob_ability(mob, cmd, arg, room, tick, agents)
+                all_tick_events.extend(events)
+
+                for e in events:
+                    for line in e.result.split("\n"):
+                        print(f"  > {line}")
+                    # Witness mob actions to agents in the room
+                    witness(agents, e.result, mob.room_id)
+                print()
+
+                result_text = "; ".join(e.result for e in events) if events else ""
+                tick_log["action_phase"].append({
+                    "entity_type": "mob",
+                    "name": mob.name,
+                    "room_id": mob.room_id,
+                    "cmd": cmd,
+                    "arg": arg or "",
+                    "result": result_text,
+                    "hp_before": hp_before,
+                    "hp_after": mob.hp,
+                })
+
+        # Effect ticks (DoTs, buff expiry) for all agents and mobs
+        for agent in agents:
+            if agent.alive:
+                effect_events = tick_effects(agent, tick, agent.room_id)
+                for e in effect_events:
+                    print(f"  [Effect] {e.result}")
+                    witness(agents, e.result, e.room_id)
+                    tick_log["effect_events"].append({
+                        "agent": e.agent,
+                        "result": e.result,
+                        "room_id": e.room_id,
+                    })
+                all_tick_events.extend(effect_events)
         for room in rooms.values():
-            poison_events = tick_poison(room, tick)
-            if poison_events:
-                for e in poison_events:
-                    print(f"  [Poison] {e.result}")
-                    _witness(e.result, e.room_id)
-                all_tick_events.extend(poison_events)
+            for mob in room.mobs:
+                if mob.hp > 0:
+                    effect_events = tick_effects(mob, tick, room.id)
+                    for e in effect_events:
+                        print(f"  [Effect] {e.result}")
+                        witness(agents, e.result, room.id)
+                        tick_log["effect_events"].append({
+                            "agent": e.agent,
+                            "result": e.result,
+                            "room_id": room.id,
+                        })
+                    all_tick_events.extend(effect_events)
 
-        # Narrate notable events (boss fights, deaths)
+        # AP regeneration for Warriors
+        regen_warrior_ap(agents)
+
+        # Snapshot agent states at end of tick
+        tick_log["agent_states_end"] = [_agent_snapshot(a) for a in agents]
+        sim_log["ticks"].append(tick_log)
+
+        # Narrate notable events
         for event in all_tick_events:
             is_notable = (
                 "slain" in event.result.lower()
@@ -502,11 +388,13 @@ def main() -> None:
                 except Exception:
                     pass
 
-        # Check win/loss
+        sim_log["meta"]["total_ticks"] = tick
+
         if check_boss_defeated(rooms):
+            outcome = "victory"
             print("\n" + "=" * 50)
-            print("  VICTORY! The Shadowfell Rift has been closed!")
-            print("  The heroes of Aeldrath are triumphant!")
+            print("  VICTORY! The boss has been defeated!")
+            print("  The heroes are triumphant!")
             print("=" * 50)
             survivors = [a for a in agents if a.alive]
             for a in survivors:
@@ -517,18 +405,33 @@ def main() -> None:
             break
 
         if all_agents_dead(agents):
+            outcome = "defeat"
             print("\n" + "=" * 50)
             print("  DEFEAT! All heroes have fallen.")
-            print("  The Shadowfell Rift consumes Aeldrath...")
+            print("  The dungeon claims another party...")
             print("=" * 50)
             break
     else:
         print("\n" + "=" * 50)
-        print(f"  TIME'S UP! {MAX_TICKS} ticks elapsed.")
-        print("  The heroes could not close the rift in time.")
+        print(f"  TIME'S UP! {max_ticks} ticks elapsed.")
+        print("  The heroes could not complete their quest in time.")
         print("=" * 50)
 
-    print("\nGame over.")
+    # ── Write JSON log ────────────────────────────────────────────────
+    sim_log["meta"]["outcome"] = outcome
+    sim_log["final_agent_states"] = [
+        {**_agent_snapshot(a), "visited_rooms": list(a.visited_rooms)}
+        for a in agents
+    ]
+
+    log_dir = os.path.join("data", "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, f"sim_{timestamp}.json")
+    with open(log_path, "w") as f:
+        json.dump(sim_log, f, indent=2)
+
+    print(f"\nJSON log: {log_path}")
+    print("Game over.")
 
 
 if __name__ == "__main__":
