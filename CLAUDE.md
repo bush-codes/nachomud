@@ -73,7 +73,7 @@ FastAPI serves the built frontend from `web/frontend/dist/` automatically.
 
 **Round 0 (one-time, before tick 1):**
 - All agents are in room_1; each speaks a planning utterance (1 LLM call each)
-- The plan is seeded into each agent's `action_history` as initial witnessed events
+- The plan is passed as a separate `round0_plan` block in the action prompt during tick 1 only (not seeded into `action_history`, so it doesn't consume witnessed-events slots)
 
 **Each tick (up to MAX_TICKS=10):**
 1. **Action phase** — for each agent:
@@ -158,6 +158,11 @@ Defined in `types.ts` as `AGENT_COLORS` and used throughout DungeonMap, AgentPan
 - **Add rooms:** Edit `data/world.json` or extend narrator.py generation
 - **Change LLM model:** Edit `llm.py` model parameter or config.py defaults
 - **Frontend component:** All in `web/frontend/src/components/`, styled with Tailwind utility classes
+
+## Working on This Project
+
+- **Always update this file (CLAUDE.md)** when making changes that affect architecture, game mechanics, prompt structure, file responsibilities, or anything documented here. This is the source of truth for how the project works.
+- **Always update README.md** when making changes that affect user-facing behavior: game mechanics, how to run, features, project structure, configuration, or anything a new reader would need to know.
 
 ## Things That No Longer Exist
 

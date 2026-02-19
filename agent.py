@@ -68,7 +68,7 @@ def get_agent_discussion(agent: AgentState, sensory: str, allies: list[str], dis
     return utterance
 
 
-def build_action_prompt(agent: AgentState, sensory: str) -> str:
+def build_action_prompt(agent: AgentState, sensory: str, round0_plan: list[str] | None = None) -> str:
     history_block = ""
     if agent.action_history:
         recent = agent.action_history[-ACTION_HISTORY_SIZE:]
@@ -87,6 +87,19 @@ def build_action_prompt(agent: AgentState, sensory: str) -> str:
         streak_line = f"WARNING: Your last {streak} actions failed.\n" if streak >= 2 else ""
         history_block = "\n=== RECENT EVENTS (what you witnessed) ===\n" + streak_line + "\n".join(f"- {h}" for h in recent)
 
+    plan_block = ""
+    if round0_plan:
+        plan_block = "\n=== PARTY PLAN (from before entering) ===\n" + "\n".join(f"- {p}" for p in round0_plan)
+
+    # Build conditional warnings
+    warnings = []
+    if agent.hp >= agent.max_hp:
+        warnings.append("You are at full HP — healing would be wasted.")
+    unavailable = [f"{spell} ({cost} MP)" for spell, cost in SPELL_COSTS.items() if agent.mp < cost]
+    if unavailable:
+        warnings.append(f"Not enough MP for: {', '.join(unavailable)}.")
+    warning_block = "\n".join(warnings)
+
     prompt = f"""You are {agent.name} the {agent.agent_class}.
 {BASE_PERSONALITY} {agent.personality}
 
@@ -95,6 +108,8 @@ Your quest: navigate the Durnhollow fortress with your allies, reach the Shadowf
 === YOUR EQUIPMENT ===
 Weapon: {agent.weapon.name} (ATK:{agent.weapon.atk}) | Armor: {agent.armor.name} (PDEF:{agent.armor.pdef}) | Ring: {agent.ring.name} (MDMG:{agent.ring.mdmg})
 HP: {agent.hp}/{agent.max_hp} | MP: {agent.mp}/{agent.max_mp}
+{warning_block}
+{plan_block}
 {history_block}
 
 === WHAT YOU SEE ===
@@ -246,13 +261,15 @@ def _is_valid_action(cmd: str, arg: str, room: Room, agent: AgentState, allies: 
 def get_agent_action(
     agent: AgentState, sensory: str,
     room: Room | None = None, allies: list[AgentState] | None = None,
-) -> tuple[str, str]:
-    """Returns (think, action) tuple. Retries with valid action list on invalid actions."""
-    prompt = build_action_prompt(agent, sensory)
+    round0_plan: list[str] | None = None,
+) -> tuple[str, str, list[str]]:
+    """Returns (think, action, retries) tuple. retries is a list of invalid action strings that were rejected."""
+    prompt = build_action_prompt(agent, sensory, round0_plan=round0_plan)
     system = f"You are {agent.name} the {agent.agent_class} in a dungeon crawler. Think briefly about your situation, then output your command after 'Do:'."
 
     raw = chat(system=system, message=prompt, model=AGENT_MODEL, max_tokens=150)
     think, action = _parse_think_do(raw)
+    retries: list[str] = []
 
     # If we have room context, validate and retry on failure
     if room is not None and allies is not None and action:
@@ -264,13 +281,14 @@ def get_agent_action(
             valid_actions = build_valid_actions(agent, room, allies)
             if not valid_actions:
                 break  # nothing valid to do (shouldn't happen)
+            retries.append(action)
             log.info("Retry %d/%d for %s: '%s' invalid. Valid: %s", attempt + 1, MAX_RETRIES, agent.name, action, valid_actions)
             retry_prompt = build_retry_prompt(agent, action, valid_actions)
             raw = chat(system=system, message=retry_prompt, model=AGENT_MODEL, max_tokens=200)
             think, action = _parse_think_do(raw)
             cmd, arg = parse_action(action)
 
-    return think, action
+    return think, action, retries
 
 
 _DIRECTION_ALIASES = {

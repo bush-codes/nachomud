@@ -347,11 +347,6 @@ def simulation_stream(max_ticks: int = MAX_TICKS, agent_model: str | None = None
 
     slog("")
 
-    # Seed action_history with round-0 discussion for all agents
-    for plan_line in round0_plan:
-        for agent in agents:
-            agent.action_history.append(plan_line)
-
     def _witness(event_text: str, room_id: str, acting_agent_name: str = "") -> None:
         """Append an event to action_history of all agents in the given room."""
         for a in agents:
@@ -386,10 +381,11 @@ def simulation_stream(max_ticks: int = MAX_TICKS, agent_model: str | None = None
                     slog(f"    |   {entry}")
 
             try:
-                think, action_str = get_agent_action(agent, sensory, room=room, allies=agents)
+                plan = round0_plan if tick == 1 else None
+                think, action_str, retries = get_agent_action(agent, sensory, room=room, allies=agents, round0_plan=plan)
             except Exception as e:
                 log.error("Tick %d: %s agent API call failed: %s", tick, agent.name, e)
-                think, action_str = "", "say I'm not sure what to do."
+                think, action_str, retries = "", "say I'm not sure what to do.", []
 
             cmd, arg = parse_action(action_str)
             log.info("Tick %d: %s thinks: %s -> %s", tick, agent.name, think, action_str)
@@ -403,6 +399,8 @@ def simulation_stream(max_ticks: int = MAX_TICKS, agent_model: str | None = None
             agent.last_result = events[0].result.split("\n")[0] if events else ""
 
             slog(f"  [{agent.name}] Think: {think}")
+            for r in retries:
+                slog(f"  [{agent.name}] Retry: '{r}' was invalid")
             slog(f"  [{agent.name}] Action: {action_str}")
 
             # Stream think as a separate event so the UI can display it

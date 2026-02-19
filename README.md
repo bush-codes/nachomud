@@ -93,60 +93,56 @@ The original research dreamed of agents that could talk to each other, form stra
 
 NachoMUD is a collaborative AI dungeon simulation that showcases multi-agent reasoning and strategic cooperation. Three AI-controlled adventurers -- each with distinct personalities and combat roles -- must work together to survive encounters with progressively dangerous monsters and ultimately defeat the final boss.
 
-The game uses **Claude Sonnet 4** to power real-time decision-making for all agents, including combat actions, dialogue, and tactical coordination. The narrator also uses Claude to generate dynamic, story-driven descriptions of events.
+The game uses **Claude** or local LLMs via **Ollama** to power real-time decision-making for all agents, including combat actions and tactical coordination. The narrator also uses LLMs to generate dynamic, story-driven descriptions of events.
 
 ## Features
 
 - **AI-Driven Agents**: Three autonomous characters (Kael the Warrior, Lyria the Mage, Finn the Ranger) make strategic decisions using Claude or local LLMs via Ollama
-- **Discussion & Action Phases**: Each tick, agents discuss strategy in character before acting. Actions are interleaved so each agent sees the results of prior actions before deciding.
-- **Sensory Awareness**: Agents have implicit awareness of their surroundings, including adjacent rooms, eliminating the need for explicit "look" commands
-- **Real-Time Combat System**: Attack, magic spells (missile, fireball, poison), healing, and item management
+- **Round-0 Planning + Action Phases**: Agents discuss strategy once before tick 1, then each tick they act based on what they've personally witnessed (room-scoped, like a MUD scrollback)
+- **Witnessed Events Model**: Agents only know what they've seen in their room -- no global information leaking. Own actions prefixed with `>>`, others' actions observed naturally, arrivals/departures tracked
+- **Action Validation & Retry**: Invalid actions are caught and the model is re-prompted with a dynamic valid-actions list, forcing deliberation over real options
+- **Sensory Awareness**: Agents see their current room contents and exit names, eliminating the need for explicit "look" commands
+- **Real-Time Combat System**: Attack, magic spells (missile, fireball, poison), healing, and item management with rich failure messages
 - **Procedural Narration**: LLM-generated story narration for combat and dialogue
-- **Persistent Memory**: Agents maintain memories of past events that influence future decisions
-- **Dynamic World**: Multi-room fortress with NPCs, loot, and escalating mob difficulty
-- **Cooperative Gameplay**: Agents must coordinate to survive encounters
-- **Web Visualization**: Real-time streaming UI with live events, dungeon map, agent panels, and simulation reset
+- **Dynamic World**: 15-room fortress with NPCs, loot, and escalating mob difficulty
+- **Cooperative Gameplay**: Agents coordinate through witnessed actions and room-scoped awareness
+- **Web Visualization**: Real-time streaming UI with live events, dungeon map, agent panels, and simulation controls
 
 ## Project Structure
 
 ```
 nachomud/
-├── main.py           # Game loop and orchestration
-├── agent.py          # Agent decision-making and action parsing
-├── llm.py            # LLM abstraction (Anthropic / Ollama)
-├── combat.py         # Combat resolution system
-├── world.py          # World and room management
-├── memory.py         # Agent memory and narrative construction
-├── narrator.py       # LLM-powered story narration
-├── models.py         # Data structures (Agent, Room, Mob, etc.)
-├── config.py         # Configuration and templates
-├── run.sh            # Launch script (Ollama + server)
-├── requirements.txt  # Python dependencies
+├── main.py              # CLI game loop (10 ticks default)
+├── agent.py             # LLM prompting: round-0 planning, action phase, retry validation
+├── llm.py               # LLM abstraction (Anthropic SDK or Ollama)
+├── combat.py            # Damage resolution: attack, missile, fireball, poison, heal
+├── world.py             # Room loading, sensory context building
+├── narrator.py          # LLM-powered story narration (room descriptions, combat flavor)
+├── models.py            # Dataclasses: Item, Mob, NPC, Room, AgentState, GameEvent
+├── config.py            # Agent templates (3 agents), spell costs, LLM_BACKEND, MAX_TICKS
+├── run.sh               # Launch script (Ollama + backend + frontend)
+├── requirements.txt     # Python dependencies
 ├── data/
-│   ├── world.json    # Dungeon layout and encounters
-│   ├── memories/     # Per-agent memory storage
-│   │   ├── finn.json
-│   │   ├── kael.json
-│   │   └── lyria.json
-│   └── logs/         # Simulation transcripts (auto-generated)
-├── web/                  # Web visualization
+│   ├── world.json       # 15-room dungeon definition (mobs, NPCs, items, exits)
+│   └── logs/            # Simulation transcripts (auto-generated)
+├── web/                     # Web visualization
 │   ├── backend/
-│   │   └── server.py     # FastAPI server wrapping the game engine
-│   └── frontend/         # React + TypeScript + Tailwind UI
+│   │   └── server.py        # FastAPI server - streams simulation as NDJSON
+│   └── frontend/            # React 19 + TypeScript + Vite 6 + Tailwind CSS
 │       └── src/
-│           ├── App.tsx
+│           ├── App.tsx           # Main component: streaming state management
+│           ├── types.ts          # TS interfaces matching backend models
 │           └── components/
-│               ├── DungeonMap.tsx    # SVG room graph with agent positions
-│               ├── AgentPanel.tsx    # HP/MP bars, equipment, status
-│               ├── EventLog.tsx      # Color-coded event feed
-│               ├── TickControls.tsx  # Playback controls and tick slider
-│               └── GameHeader.tsx    # Title, status, run button
-└── neatMUD/              # Legacy research codebase (2007-2009)
-    ├── kinchoMUD/        # Original C++ MUD SDK with rtNEAT integration
-    │   ├── src/          # Battle, Mob, MobBrain, Chain, Room, etc.
-    │   ├── data/         # XML world definitions
-    │   └── docs/         # Research reports and proposals
-    └── rtNEAT/           # Kenneth Stanley's rtNEAT neuroevolution library
+│               ├── GameHeader.tsx   # Status badge, Run/Reset buttons
+│               ├── DungeonMap.tsx   # SVG map with agent dots, room states
+│               ├── AgentPanel.tsx   # HP/MP bars, equipment, last action
+│               └── EventLog.tsx     # Color-coded live event stream
+└── neatMUD/                 # Legacy research codebase (2007-2009)
+    ├── kinchoMUD/           # Original C++ MUD SDK with rtNEAT integration
+    │   ├── src/             # Battle, Mob, MobBrain, Chain, Room, etc.
+    │   ├── data/            # XML world definitions
+    │   └── docs/            # Research reports and proposals
+    └── rtNEAT/              # Kenneth Stanley's rtNEAT neuroevolution library
 ```
 
 ## Installation
@@ -204,7 +200,7 @@ LLM_BACKEND=anthropic ./run.sh
 python main.py
 ```
 
-The simulation will run for up to 50 ticks (turns), with each agent deciding their action and the narrator describing the results. Watch as the AI-controlled party descends through the fortress!
+The simulation will run for up to 10 ticks (turns), with each agent deciding their action based on what they've witnessed. Watch as the AI-controlled party descends through the fortress!
 
 ### Local LLM (Ollama)
 
@@ -308,7 +304,7 @@ The Vite dev server proxies API requests to the backend automatically.
 - `tell <name> <msg>` - Speak to an NPC or ally
 - `say <message>` - Speak to everyone in the room
 
-Agents have implicit sensory awareness of their current room and all adjacent rooms, so there is no `look` command -- they always know what's around them.
+Agents see their current room contents and exit names, so there is no `look` command -- they always know what's in their room.
 
 ### Equipment
 
@@ -337,7 +333,7 @@ The dungeon layout, encounters, and items are defined in `data/world.json`. Each
 - Loot items
 - Connections to adjacent rooms
 
-Agent memories are stored in `data/memories/` for persistence between decisions.
+Simulation logs are written to `data/logs/` for each run.
 
 ## Technology
 

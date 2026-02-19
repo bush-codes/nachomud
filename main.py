@@ -275,11 +275,6 @@ def main() -> None:
 
     print()
 
-    # Seed action_history with round-0 discussion for all agents
-    for plan_line in round0_plan:
-        for agent in agents:
-            agent.action_history.append(plan_line)
-
     def _witness(event_text: str, room_id: str, acting_agent_name: str = "") -> None:
         """Append an event to action_history of all agents in the given room."""
         for a in agents:
@@ -305,14 +300,17 @@ def main() -> None:
 
             # Get action from LLM
             try:
-                think, action_str = get_agent_action(agent, sensory, room=room, allies=agents)
+                plan = round0_plan if tick == 1 else None
+                think, action_str, retries = get_agent_action(agent, sensory, room=room, allies=agents, round0_plan=plan)
             except Exception as e:
                 print(f"  [ERROR] {agent.name} agent failed: {e}")
-                think, action_str = "", "say I'm not sure what to do."
+                think, action_str, retries = "", "say I'm not sure what to do.", []
 
             cmd, arg = parse_action(action_str)
             if think:
                 print(f"[{agent.name}] Think: {think}")
+            for r in retries:
+                print(f"[{agent.name}] Retry: '{r}' was invalid")
             print(f"[{agent.name}] Action: {action_str}")
 
             # Track the room the agent is in BEFORE the action (for witnessing)
