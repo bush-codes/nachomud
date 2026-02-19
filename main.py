@@ -314,10 +314,12 @@ def main() -> None:
     print(f"Starting location: {start_room.name}")
     print(f"  {start_room.description}\n")
 
-    def _witness(event_text: str, room_id: str, acting_agent_name: str = "", history: str = "action") -> None:
+    def _witness(event_text: str, room_id: str, acting_agent_name: str = "", history: str = "action", skip_sender: bool = False) -> None:
         """Append an event to the appropriate history of all agents in the given room."""
         for a in agents:
             if a.alive and a.room_id == room_id:
+                if skip_sender and a.name == acting_agent_name:
+                    continue
                 text = f">> {event_text}" if a.name == acting_agent_name else event_text
                 if history == "comm":
                     a.comm_history.append(text)
@@ -353,9 +355,8 @@ def main() -> None:
             for a in agents:
                 if a.alive and a.room_id == room_id:
                     if a.name == agent_name:
-                        a.comm_history.append(f'>> yell {message} → {agent_name} yells: "{message}"')
-                    else:
-                        a.comm_history.append(text)
+                        continue  # sender already knows what they yelled
+                    a.comm_history.append(text)
                     a.comm_history = a.comm_history[-COMM_HISTORY_SIZE:]
 
     for tick in range(1, MAX_TICKS + 1):
@@ -399,6 +400,8 @@ def main() -> None:
                     _witness_private(result_line, agent.name, target_name)
                 elif e.action == "yell":
                     _witness_yell(agent.name, arg, pre_action_room)
+                elif e.action == "say":
+                    _witness(result_line, agent.room_id, agent.name, history="comm", skip_sender=True)
                 else:
                     _witness(result_line, agent.room_id, agent.name, history=e.category)
 
@@ -467,6 +470,8 @@ def main() -> None:
                     _witness_private(result_line, agent.name, target_name)
                 elif e.action == "yell":
                     _witness_yell(agent.name, arg, pre_action_room)
+                elif e.action == "say":
+                    _witness(result_line, agent.room_id, agent.name, history="comm", skip_sender=True)
                 else:
                     _witness(result_line, agent.room_id, agent.name, history=e.category)
 
