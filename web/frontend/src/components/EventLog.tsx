@@ -3,13 +3,13 @@ import { GameEventData, AGENT_COLORS } from "../types";
 
 interface EventLogProps {
   events: GameEventData[];
-  currentTick: number;
 }
 
 function getEventColor(agent: string): string {
   const colors = AGENT_COLORS[agent];
   if (colors) return colors.text;
   if (agent === "poison") return "text-purple-400";
+  if (agent === "system") return "text-amber-500";
   return "text-gray-400";
 }
 
@@ -22,12 +22,14 @@ function getEventIcon(action: string): string {
   if (action === "look") return "\ud83d\udc41\ufe0f";
   if (action.startsWith("get")) return "\ud83c\udfaf";
   if (action.startsWith("tell") || action === "say") return "\ud83d\udcac";
+  if (action === "think") return "\ud83d\udca1";
   if (action === "counterattack") return "\u26a1";
   if (action === "tick") return "\u2623\ufe0f";
+  if (action === "system") return "\u2699\ufe0f";
   return "\u25b6";
 }
 
-export default function EventLog({ events, currentTick }: EventLogProps) {
+export default function EventLog({ events }: EventLogProps) {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export default function EventLog({ events, currentTick }: EventLogProps) {
   return (
     <div className="bg-gray-900 rounded-lg border border-gray-800 p-2 sm:p-3 h-full overflow-y-auto">
       <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-        Tick {currentTick} Events
+        Event Log
       </div>
       {events.length === 0 ? (
         <div className="text-sm text-gray-600 italic">No events yet</div>
@@ -49,7 +51,7 @@ export default function EventLog({ events, currentTick }: EventLogProps) {
               <span className={`font-semibold shrink-0 ${getEventColor(event.agent)}`}>
                 {event.agent}
               </span>
-              <span className="text-gray-400 break-words">
+              <span className={`break-words ${event.action === "think" ? "text-gray-500 italic" : "text-gray-400"}`}>
                 {event.result.split("\n").map((line, j) => (
                   <span key={j}>
                     {j > 0 && <br />}

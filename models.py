@@ -32,6 +32,7 @@ class NPC:
     dialogue: list[str] = field(default_factory=list)
     item: Item | None = None
     item_given: bool = False
+    interactions_left: int = 3  # set randomly 1-5 at world load
 
 
 @dataclass
@@ -63,6 +64,7 @@ class AgentState:
     inventory: list[Item] = field(default_factory=list)
     last_action: str = ""
     last_result: str = ""
+    action_history: list[str] = field(default_factory=list)  # rolling window of recent actions+results
 
 
 @dataclass

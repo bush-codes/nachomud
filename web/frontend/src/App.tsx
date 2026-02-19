@@ -1,23 +1,21 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { SimulationResult, AgentSnapshot, GameEventData, RoomInfo, TickData } from "./types";
+import { SimulationResult, AgentSnapshot, GameEventData, RoomInfo, RoomSnapshot } from "./types";
 import GameHeader from "./components/GameHeader";
 import DungeonMap from "./components/DungeonMap";
 import AgentPanel from "./components/AgentPanel";
 import EventLog from "./components/EventLog";
-import TickControls from "./components/TickControls";
 
 export default function App() {
   const [simulation, setSimulation] = useState<SimulationResult | null>(null);
   const [worldRooms, setWorldRooms] = useState<RoomInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentTick, setCurrentTick] = useState(1);
-  const [playing, setPlaying] = useState(false);
-  const [liveFollow, setLiveFollow] = useState(true);
-  const [speed, setSpeed] = useState(1);
-  const [liveEvents, setLiveEvents] = useState<GameEventData[]>([]);
-  const [liveTick, setLiveTick] = useState(0);
-  const intervalRef = useRef<number | null>(null);
+  const [allEvents, setAllEvents] = useState<GameEventData[]>([]);
+  const [latestAgentStates, setLatestAgentStates] = useState<AgentSnapshot[]>([]);
+  const [latestRoomStates, setLatestRoomStates] = useState<Record<string, RoomSnapshot>>({});
+  const [maxTicks, setMaxTicks] = useState(10);
+  const [agentModel, setAgentModel] = useState("gemma3:4b");
+  const [currentTick, setCurrentTick] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
   // Load the static world map on mount
@@ -35,12 +33,11 @@ export default function App() {
     }
     setSimulation(null);
     setLoading(false);
-    setPlaying(false);
-    setLiveFollow(true);
-    setCurrentTick(1);
     setError(null);
-    setLiveEvents([]);
-    setLiveTick(0);
+    setAllEvents([]);
+    setLatestAgentStates([]);
+    setLatestRoomStates({});
+    setCurrentTick(0);
   }, []);
 
   const runSimulation = useCallback(async () => {
@@ -52,13 +49,15 @@ export default function App() {
     abortRef.current = controller;
 
     setLoading(true);
-    setPlaying(false);
-    setLiveFollow(true);
     setSimulation(null);
     setError(null);
+    setAllEvents([{ agent: "system", action: "system", result: "Building world and summoning heroes...", room_id: "" }]);
+    setLatestAgentStates([]);
+    setLatestRoomStates({});
+    setCurrentTick(0);
 
     try {
-      const res = await fetch("/api/simulate", { method: "POST", signal: controller.signal });
+      const res = await fetch(`/api/simulate?max_ticks=${maxTicks}&agent_model=${encodeURIComponent(agentModel)}`, { method: "POST", signal: controller.signal });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.detail || `Server error: ${res.status}`);
@@ -70,7 +69,6 @@ export default function App() {
 
       let world: { rooms: RoomInfo[] } = { rooms: [] };
       let agents: SimulationResult["agents"] = [];
-      const ticks: TickData[] = [];
       let outcome: SimulationResult["outcome"] | null = null;
 
       while (true) {
@@ -93,32 +91,32 @@ export default function App() {
               total_ticks: 0,
               world,
               agents,
-              ticks: [],
             });
+            const names = agents.map((a) => `${a.name} the ${a.agent_class}`).join(", ");
+            setAllEvents((prev) => [...prev,
+              { agent: "system", action: "system", result: `${names} enter the dungeon.`, room_id: "" },
+              { agent: "system", action: "system", result: "Round 0: The party discusses their plan...", room_id: "" },
+            ]);
           } else if (msg.type === "event") {
-            setLiveTick(msg.tick);
-            setLiveEvents((prev) => [...prev, msg.event]);
+            setAllEvents((prev) => [...prev, msg.event]);
+            if (msg.tick !== undefined) {
+              setCurrentTick(msg.tick);
+            }
+            if (msg.agent_states) {
+              setLatestAgentStates(msg.agent_states);
+            }
+            if (msg.room_states) {
+              setLatestRoomStates(msg.room_states);
+            }
           } else if (msg.type === "tick") {
-            ticks.push({
-              tick: msg.tick,
-              events: msg.events,
-              agent_states: msg.agent_states,
-              room_states: msg.room_states,
-            });
-            setLiveEvents([]);
-            setLiveTick(0);
-            setSimulation({
-              outcome: outcome ?? "timeout",
-              total_ticks: ticks.length,
-              world,
-              agents,
-              ticks: [...ticks],
-            });
-            // Only auto-advance if user hasn't paused
-            setLiveFollow((live) => {
-              if (live) setCurrentTick(ticks.length);
-              return live;
-            });
+            setCurrentTick(msg.tick);
+            // Belt and suspenders: also update states from tick messages
+            if (msg.agent_states) {
+              setLatestAgentStates(msg.agent_states);
+            }
+            if (msg.room_states) {
+              setLatestRoomStates(msg.room_states);
+            }
           } else if (msg.type === "done") {
             outcome = msg.outcome;
             setSimulation({
@@ -126,7 +124,6 @@ export default function App() {
               total_ticks: msg.total_ticks,
               world,
               agents,
-              ticks: [...ticks],
             });
           }
         }
@@ -142,57 +139,12 @@ export default function App() {
     } finally {
       abortRef.current = null;
       setLoading(false);
-      setLiveFollow(false);
     }
-  }, []);
+  }, [maxTicks, agentModel]);
 
-  // Auto-play interval (for post-simulation replay)
-  useEffect(() => {
-    if (playing && simulation && !loading) {
-      intervalRef.current = window.setInterval(() => {
-        setCurrentTick((prev) => {
-          if (prev >= simulation.total_ticks) {
-            setPlaying(false);
-            return prev;
-          }
-          return prev + 1;
-        });
-      }, 1000 / speed);
-    }
-    return () => {
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [playing, speed, simulation, loading]);
-
-  const togglePlay = useCallback(() => {
-    if (!simulation) return;
-    if (loading) {
-      // During streaming: toggle live follow
-      setLiveFollow((l) => !l);
-      return;
-    }
-    if (currentTick >= simulation.total_ticks) {
-      setCurrentTick(1);
-      setPlaying(true);
-    } else {
-      setPlaying((p) => !p);
-    }
-  }, [simulation, currentTick, loading]);
-
-  const handleSetTick = useCallback((tick: number) => {
-    setCurrentTick(tick);
-    setPlaying(false);
-    setLiveFollow(false);
-  }, []);
-
-  // Current tick data
-  const tickData = simulation?.ticks[currentTick - 1] ?? null;
-
-  const agentStates: AgentSnapshot[] = tickData
-    ? tickData.agent_states
+  // Derive agent states: use latest from stream, or fall back to initial agent info
+  const agentStates: AgentSnapshot[] = latestAgentStates.length > 0
+    ? latestAgentStates
     : simulation
       ? simulation.agents.map((a) => ({
           name: a.name,
@@ -210,19 +162,18 @@ export default function App() {
         }))
       : [];
 
-  const roomStates = tickData?.room_states ?? {};
-  // Show live events if we're following the stream and the current tick hasn't finalized yet
-  const isOnLiveTick = loading && liveFollow && liveTick > 0 && !tickData;
-  const events = isOnLiveTick ? liveEvents : (tickData?.events ?? []);
   const rooms = simulation?.world.rooms ?? worldRooms;
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <GameHeader
         outcome={loading ? null : simulation?.outcome ?? null}
-        totalTicks={simulation?.total_ticks ?? 0}
-        currentTick={currentTick}
         loading={loading}
+        currentTick={currentTick}
+        maxTicks={maxTicks}
+        agentModel={agentModel}
+        onMaxTicksChange={setMaxTicks}
+        onAgentModelChange={setAgentModel}
         onRunSimulation={runSimulation}
         onResetSimulation={resetSimulation}
       />
@@ -236,24 +187,11 @@ export default function App() {
       {/* Main content: Map (top/left) | Event Log (bottom/right) */}
       <div className="flex-1 flex flex-col md:flex-row gap-2 sm:gap-4 p-2 sm:p-4 overflow-hidden min-h-0">
         <div className="w-full md:w-1/2 shrink-0 h-1/2 md:h-full min-h-0">
-          <DungeonMap rooms={rooms} agentStates={agentStates} roomStates={roomStates} />
+          <DungeonMap rooms={rooms} agentStates={agentStates} roomStates={latestRoomStates} />
         </div>
         <div className="w-full md:w-1/2 h-1/2 md:h-full min-h-0">
-          <EventLog events={events} currentTick={isOnLiveTick ? liveTick : currentTick} />
+          <EventLog events={allEvents} />
         </div>
-      </div>
-
-      {/* Tick controls */}
-      <div className="px-2 sm:px-4 pb-2">
-        <TickControls
-          currentTick={currentTick}
-          totalTicks={simulation?.total_ticks ?? 0}
-          playing={loading ? liveFollow : playing}
-          speed={speed}
-          onSetTick={handleSetTick}
-          onTogglePlay={togglePlay}
-          onSetSpeed={setSpeed}
-        />
       </div>
 
       {/* Agent panels (horizontal bottom row) */}

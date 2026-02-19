@@ -70,19 +70,11 @@ export interface RoomSnapshot {
   items: Item[];
 }
 
-export interface TickData {
-  tick: number;
-  events: GameEventData[];
-  agent_states: AgentSnapshot[];
-  room_states: Record<string, RoomSnapshot>;
-}
-
 export interface SimulationResult {
   outcome: "victory" | "defeat" | "timeout";
   total_ticks: number;
   world: { rooms: RoomInfo[] };
   agents: AgentInfo[];
-  ticks: TickData[];
 }
 
 export type AgentColor = "red" | "blue" | "green";

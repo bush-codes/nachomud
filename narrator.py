@@ -33,9 +33,9 @@ def narrate_npc_dialogue(npc_name: str, npc_title: str, dialogue_hints: list[str
     hints = "; ".join(dialogue_hints) if dialogue_hints else "mysterious, cryptic"
     return chat(
         system=SYSTEM_PROMPT,
-        message=f"{agent_name} speaks with {npc_name} the {npc_title}. Dialogue themes: {hints}. Write 1-2 sentences of what {npc_name} says in-character. Use quotes.",
+        message=f"{agent_name} speaks with {npc_name} the {npc_title}. Dialogue themes: {hints}. Write 1-2 sentences of what {npc_name} says in-character. Use quotes. Be brief — no scene-setting, just dialogue.",
         model=NARRATOR_MODEL,
-        max_tokens=150,
+        max_tokens=60,
     )
 
 

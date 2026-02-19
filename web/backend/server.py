@@ -23,9 +23,10 @@ from fastapi.responses import FileResponse, StreamingResponse
 
 from agent import get_agent_action, get_agent_discussion, parse_action
 from combat import resolve_attack, resolve_fireball, resolve_heal, resolve_missile, resolve_poison, tick_poison
-from config import AGENT_TEMPLATES, ANTHROPIC_API_KEY, LLM_BACKEND, MAX_TICKS
-from memory import append_memory, build_narrative_memory, clear_memories
+import config
+from config import ACTION_HISTORY_SIZE, AGENT_TEMPLATES, ANTHROPIC_API_KEY, LLM_BACKEND, MAX_TICKS
 from models import AgentState, GameEvent, Item, Room
+from narrator import narrate_npc_dialogue
 from world import build_sensory_context, build_world, describe_room
 
 log = logging.getLogger("nachomud")
@@ -107,7 +108,6 @@ def create_agents() -> list[AgentState]:
             ring=Item(**t["ring"]),
             room_id="room_1",
         )
-        clear_memories(agent.name)
         agents.append(agent)
     return agents
 
@@ -152,19 +152,19 @@ def resolve_action(
                                     f"No exit to the {DIRECTION_NAMES.get(cmd, cmd)}.", agent.room_id))
 
     elif cmd == "attack":
-        events.extend(resolve_attack(agent, room, arg, tick))
+        events.extend(resolve_attack(agent, room, arg, tick, agents))
 
     elif cmd == "missile":
-        events.extend(resolve_missile(agent, room, arg, tick))
+        events.extend(resolve_missile(agent, room, arg, tick, agents))
 
     elif cmd == "fireball":
         events.extend(resolve_fireball(agent, room, tick))
 
     elif cmd == "poison":
-        events.extend(resolve_poison(agent, room, arg, tick))
+        events.extend(resolve_poison(agent, room, arg, tick, agents))
 
     elif cmd == "heal":
-        events.extend(resolve_heal(agent, tick))
+        events.extend(resolve_heal(agent, tick, arg, agents, room))
 
     elif cmd in ("tell", "talk"):
         parts = arg.split(None, 1)
@@ -177,14 +177,17 @@ def resolve_action(
                 npc = n
                 break
         if npc:
-            # Skip LLM narration for speed — use static dialogue
-            dialogue = npc.dialogue[0] if npc.dialogue else "..."
-            result = f"{npc.name} says: \"{dialogue}\""
-            if npc.item and not npc.item_given:
-                agent.inventory.append(npc.item)
-                equip_item(agent, npc.item)
-                result += f"\n  {npc.name} gives {agent.name} a {npc.item.name}!"
-                npc.item_given = True
+            if npc.interactions_left > 0:
+                npc.interactions_left -= 1
+                dialogue = narrate_npc_dialogue(npc.name, npc.title, npc.dialogue, agent.name)
+                result = f"{npc.name} says: {dialogue}"
+                if npc.item and not npc.item_given:
+                    agent.inventory.append(npc.item)
+                    equip_item(agent, npc.item)
+                    result += f"\n  {npc.name} gives {agent.name} a {npc.item.name}!"
+                    npc.item_given = True
+            else:
+                result = f"{npc.name} has nothing more to say."
             events.append(GameEvent(tick, agent.name, f"tell {npc.name}", result, agent.room_id))
         else:
             target_agent = None
@@ -196,8 +199,14 @@ def resolve_action(
                 result = f'{agent.name} tells {target_agent.name}: "{message}"'
                 events.append(GameEvent(tick, agent.name, f"tell {target_agent.name}", result, agent.room_id))
             else:
-                events.append(GameEvent(tick, agent.name, f"tell {target_name}",
-                                        f"No one named '{target_name}' here.", agent.room_id))
+                others = agents_in_room(agents, agent.room_id, agent.name)
+                npcs_here = [n.name for n in room.npcs]
+                available = others + npcs_here
+                if available:
+                    result = f"No one named '{target_name}' here. You can talk to: {', '.join(available)}."
+                else:
+                    result = f"No one named '{target_name}' here. There is nobody to talk to in this room."
+                events.append(GameEvent(tick, agent.name, f"tell {target_name}", result, agent.room_id))
 
     elif cmd == "say":
         others = agents_in_room(agents, agent.room_id, agent.name)
@@ -229,8 +238,12 @@ def resolve_action(
                 result += f" Equipped as ring (MDMG:{item.mdmg})."
             events.append(GameEvent(tick, agent.name, f"get {item.name}", result, agent.room_id))
         else:
-            events.append(GameEvent(tick, agent.name, f"get {arg}",
-                                    f"No item named '{arg}' here.", agent.room_id))
+            available = [i.name for i in room.items]
+            if available:
+                result = f"No item named '{arg}' here. Items available: {', '.join(available)}."
+            else:
+                result = f"No item named '{arg}' here. There are no items to pick up in this room."
+            events.append(GameEvent(tick, agent.name, f"get {arg}", result, agent.room_id))
     else:
         events.append(GameEvent(tick, agent.name, cmd,
                                 f"Unknown command: {cmd}", agent.room_id))
@@ -252,14 +265,17 @@ def all_agents_dead(agents: list[AgentState]) -> bool:
 
 # ── Simulation runner (streaming) ──────────────────────────────────────
 
-def simulation_stream() -> Generator[str, None, None]:
+def simulation_stream(max_ticks: int = MAX_TICKS, agent_model: str | None = None) -> Generator[str, None, None]:
     """Sync generator that yields newline-delimited JSON: init, tick*, done."""
     from datetime import datetime
+
+    if agent_model:
+        config.AGENT_MODEL = agent_model
 
     rooms = build_world()
     describe_room(rooms["room_1"])
     agents = create_agents()
-    log.info("Simulation started: %d agents, %d max ticks", len(agents), MAX_TICKS)
+    log.info("Simulation started: %d agents, %d max ticks, model=%s", len(agents), max_ticks, config.AGENT_MODEL)
 
     # Open a log file for this run
     log_dir = os.path.join(PROJECT_ROOT, "data", "logs")
@@ -275,7 +291,7 @@ def simulation_stream() -> Generator[str, None, None]:
 
     slog(f"=== NachoMUD Simulation - {timestamp} ===")
     slog(f"Agents: {', '.join(a.name + ' the ' + a.agent_class for a in agents)}")
-    slog(f"Max ticks: {MAX_TICKS}")
+    slog(f"Max ticks: {max_ticks}")
     slog("")
 
     # Build static world + agents info
@@ -304,43 +320,53 @@ def simulation_stream() -> Generator[str, None, None]:
     outcome = "timeout"
     total_ticks = 0
 
-    for tick in range(1, MAX_TICKS + 1):
+    # ── Round 0: one-time planning discussion (all agents start in room_1) ──
+    slog("=== ROUND 0: PLANNING ===")
+    round0_plan: list[str] = []
+    start_room = rooms["room_1"]
+    all_names = [a.name for a in agents]
+
+    for agent in agents:
+        others = [a.name for a in agents if a.name != agent.name]
+        sensory = build_sensory_context(start_room, all_names, rooms, agent.name)
+        try:
+            utterance = get_agent_discussion(agent, sensory, others, round0_plan)
+        except Exception as e:
+            log.error("Round 0: %s discussion failed: %s", agent.name, e)
+            utterance = "Let's keep moving."
+        round0_plan.append(f"{agent.name}: {utterance}")
+        log.info("Round 0: %s says: %s", agent.name, utterance)
+        slog(f"  [{agent.name}] Says: {utterance}")
+        say_event = GameEvent(0, agent.name, "say", f'{agent.name} says: "{utterance}"', "room_1")
+        agent_states = [agent_state_snapshot(a) for a in agents]
+        room_states_snap = {}
+        for rid, r in rooms.items():
+            if r.mobs or r.items:
+                room_states_snap[rid] = room_state_snapshot(r)
+        yield json.dumps({"type": "event", "tick": 0, "event": event_to_dict(say_event), "agent_states": agent_states, "room_states": room_states_snap}) + "\n"
+
+    slog("")
+
+    # Seed action_history with round-0 discussion for all agents
+    for plan_line in round0_plan:
+        for agent in agents:
+            agent.action_history.append(plan_line)
+
+    def _witness(event_text: str, room_id: str, acting_agent_name: str = "") -> None:
+        """Append an event to action_history of all agents in the given room."""
+        for a in agents:
+            if a.alive and a.room_id == room_id:
+                if a.name == acting_agent_name:
+                    a.action_history.append(f">> {event_text}")
+                else:
+                    a.action_history.append(event_text)
+                a.action_history = a.action_history[-ACTION_HISTORY_SIZE:]
+
+    for tick in range(1, max_ticks + 1):
         slog(f"{'=' * 50}")
         slog(f"  TICK {tick}")
         slog(f"{'=' * 50}")
         tick_events = []
-
-        # --- Discussion phase ---
-        room_groups: dict[str, list[AgentState]] = {}
-        for agent in agents:
-            if agent.alive:
-                room_groups.setdefault(agent.room_id, []).append(agent)
-
-        room_discussions: dict[str, list[str]] = {}
-        for room_id, room_agents in room_groups.items():
-            room = rooms[room_id]
-            others_map = {a.name: [o.name for o in room_agents if o.name != a.name] for a in room_agents}
-            all_names = [a.name for a in room_agents]
-            discussion: list[str] = []
-
-            for agent in room_agents:
-                sensory = build_sensory_context(room, all_names, rooms, agent.name)
-                try:
-                    utterance = get_agent_discussion(agent, sensory, others_map[agent.name], discussion)
-                except Exception as e:
-                    log.error("Tick %d: %s discussion failed: %s", tick, agent.name, e)
-                    utterance = "Let's keep moving."
-                discussion.append(f"{agent.name}: {utterance}")
-                log.info("Tick %d: %s says: %s", tick, agent.name, utterance)
-                slog(f"  [{agent.name}] Says: {utterance}")
-                say_event = GameEvent(tick, agent.name, "say", f'{agent.name} says: "{utterance}"', room_id)
-                tick_events.append(say_event)
-                yield json.dumps({"type": "event", "tick": tick, "event": event_to_dict(say_event)}) + "\n"
-
-            room_discussions[room_id] = discussion
-
-        # --- Action phase (interleaved with results) ---
-        room_actions: dict[str, list[str]] = {rid: [] for rid in room_discussions}
 
         for agent in agents:
             if not agent.alive:
@@ -349,30 +375,75 @@ def simulation_stream() -> Generator[str, None, None]:
             room = rooms[agent.room_id]
             others = agents_in_room(agents, agent.room_id, agent.name)
             sensory = build_sensory_context(room, [agent.name] + others, rooms, agent.name)
-            discussion = room_discussions.get(agent.room_id, [])
-            actions_so_far = room_actions.get(agent.room_id, [])
+
+            # Log full agent context for debugging
+            slog(f"  [{agent.name}] --- Context ---")
+            for line in sensory.split("\n"):
+                slog(f"    | {line}")
+            if agent.action_history:
+                slog(f"    | Witnessed events:")
+                for entry in agent.action_history[-ACTION_HISTORY_SIZE:]:
+                    slog(f"    |   {entry}")
 
             try:
-                action_str = get_agent_action(agent, sensory, discussion, actions_so_far)
+                think, action_str = get_agent_action(agent, sensory, room=room, allies=agents)
             except Exception as e:
                 log.error("Tick %d: %s agent API call failed: %s", tick, agent.name, e)
-                action_str = "say I'm not sure what to do."
+                think, action_str = "", "say I'm not sure what to do."
 
             cmd, arg = parse_action(action_str)
-            log.info("Tick %d: %s -> %s", tick, agent.name, action_str)
+            log.info("Tick %d: %s thinks: %s -> %s", tick, agent.name, think, action_str)
+
+            # Track the room the agent is in BEFORE the action (for witnessing)
+            pre_action_room = agent.room_id
+
             events = resolve_action(agent, cmd, arg, rooms, agents, tick)
 
             agent.last_action = action_str
             agent.last_result = events[0].result.split("\n")[0] if events else ""
 
+            slog(f"  [{agent.name}] Think: {think}")
             slog(f"  [{agent.name}] Action: {action_str}")
+
+            # Stream think as a separate event so the UI can display it
+            if think:
+                think_event = GameEvent(tick, agent.name, "think", f'{agent.name} thinks: "{think}"', agent.room_id)
+                tick_events.append(think_event)
+                agent_states = [agent_state_snapshot(a) for a in agents]
+                room_states_snap = {}
+                for rid, r in rooms.items():
+                    if r.mobs or r.items:
+                        room_states_snap[rid] = room_state_snapshot(r)
+                yield json.dumps({"type": "event", "tick": tick, "event": event_to_dict(think_event), "agent_states": agent_states, "room_states": room_states_snap}) + "\n"
+
             for e in events:
                 tick_events.append(e)
                 for line in e.result.split("\n"):
                     slog(f"    > {line}")
-                yield json.dumps({"type": "event", "tick": tick, "event": event_to_dict(e)}) + "\n"
-                # Inject result into actions context for the next agent
-                room_actions.setdefault(agent.room_id, []).append(f"{e.agent}: {e.result.split(chr(10))[0]}")
+                agent_states = [agent_state_snapshot(a) for a in agents]
+                room_states_snap = {}
+                for rid, r in rooms.items():
+                    if r.mobs or r.items:
+                        room_states_snap[rid] = room_state_snapshot(r)
+                yield json.dumps({"type": "event", "tick": tick, "event": event_to_dict(e), "agent_states": agent_states, "room_states": room_states_snap}) + "\n"
+
+                # Witnessed events: everyone in the room sees the result
+                result_line = e.result.split("\n")[0]
+                if "moves" in e.action:
+                    # Old room: others see departure (agent already moved, won't match)
+                    _witness(f"{agent.name} leaves heading {DIRECTION_NAMES.get(cmd, cmd)}", pre_action_room)
+                    # New room: others see arrival from the opposite direction
+                    opposite = {"n": "south", "s": "north", "e": "west", "w": "east"}
+                    arrival_dir = opposite.get(cmd, "somewhere")
+                    for a in agents:
+                        if a.alive and a.room_id == agent.room_id and a.name != agent.name:
+                            a.action_history.append(f"{agent.name} arrives from the {arrival_dir}")
+                            a.action_history = a.action_history[-ACTION_HISTORY_SIZE:]
+                    # Moving agent: own action
+                    agent.action_history.append(f">> {action_str} → {result_line}")
+                    agent.action_history = agent.action_history[-ACTION_HISTORY_SIZE:]
+                else:
+                    _witness(result_line, agent.room_id, agent.name)
 
         # Poison ticks
         for room in rooms.values():
@@ -380,18 +451,13 @@ def simulation_stream() -> Generator[str, None, None]:
             for e in poison_events:
                 tick_events.append(e)
                 slog(f"  [Poison] {e.result}")
-                yield json.dumps({"type": "event", "tick": tick, "event": event_to_dict(e)}) + "\n"
-
-        # Update memories
-        for agent in agents:
-            if not agent.alive:
-                continue
-            agent_events = [e for e in tick_events if e.room_id == agent.room_id or e.agent == agent.name]
-            if agent_events:
-                room = rooms[agent.room_id]
-                summary = build_narrative_memory(agent.name, agent_events, room.name)
-                if summary:
-                    append_memory(agent.name, tick, summary)
+                _witness(e.result, e.room_id)
+                agent_states = [agent_state_snapshot(a) for a in agents]
+                room_states_snap = {}
+                for rid, r in rooms.items():
+                    if r.mobs or r.items:
+                        room_states_snap[rid] = room_state_snapshot(r)
+                yield json.dumps({"type": "event", "tick": tick, "event": event_to_dict(e), "agent_states": agent_states, "room_states": room_states_snap}) + "\n"
 
         # Snapshot state
         agent_states = [agent_state_snapshot(a) for a in agents]
@@ -434,7 +500,7 @@ def simulation_stream() -> Generator[str, None, None]:
 # ── API Endpoints ──────────────────────────────────────────────────────
 
 @app.post("/api/simulate")
-async def simulate():
+async def simulate(max_ticks: int = MAX_TICKS, agent_model: str | None = None):
     """Stream a simulation as newline-delimited JSON."""
     if LLM_BACKEND != "ollama" and not ANTHROPIC_API_KEY:
         raise HTTPException(
@@ -442,7 +508,8 @@ async def simulate():
             detail="ANTHROPIC_API_KEY environment variable is not set. "
                    "Export it before starting the server: export ANTHROPIC_API_KEY=sk-...",
         )
-    return StreamingResponse(simulation_stream(), media_type="application/x-ndjson")
+    ticks = max(1, min(max_ticks, 200))
+    return StreamingResponse(simulation_stream(ticks, agent_model), media_type="application/x-ndjson")
 
 
 @app.get("/api/world")

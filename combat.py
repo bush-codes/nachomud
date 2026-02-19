@@ -30,12 +30,96 @@ def _find_mob(room: Room, mob_name: str) -> Mob | None:
     return None
 
 
-def resolve_attack(agent: AgentState, room: Room, target_name: str, tick: int) -> list[GameEvent]:
+def _target_failure_hint(target_name: str, room: Room, agents: list["AgentState"] | None = None, agent_name: str = "") -> str:
+    """Build a rich failure message explaining why a combat target wasn't found."""
+    target_lower = target_name.lower()
+    reason = ""
+
+    # Check if target is an NPC in the room
+    for npc in room.npcs:
+        if target_lower in npc.name.lower():
+            reason = f"'{npc.name}' is an NPC, not an enemy. Use 'tell {npc.name} <message>' to talk."
+            break
+
+    # Check if target is an ally in the room
+    if not reason and agents:
+        for a in agents:
+            if a.alive and a.room_id == room.id and a.name != agent_name and target_lower in a.name.lower():
+                reason = f"'{a.name}' is your ally, not an enemy."
+                break
+
+    # Check if target is a dead mob in the room
+    if not reason:
+        for mob in room.mobs:
+            if mob.hp <= 0 and target_lower in mob.name.lower():
+                reason = f"'{mob.name}' is already dead."
+                break
+
+    # Check if target is an item on the ground
+    if not reason:
+        for item in room.items:
+            if target_lower in item.name.lower():
+                reason = f"'{item.name}' is an item, not an enemy. Use 'get {item.name}' to pick it up."
+                break
+
+    if not reason:
+        reason = f"No enemy named '{target_name}' in this room."
+
+    # Always append what's actually here
+    living_mobs = [m for m in room.mobs if m.hp > 0]
+    if living_mobs:
+        reason += f" Enemies here: {', '.join(m.name for m in living_mobs)}."
+    else:
+        reason += " No enemies in this room."
+
+    return reason
+
+
+def _no_mobs_hint(room: Room) -> str:
+    """Build a rich failure message for AoE spells when no mobs are present."""
+    return "No enemies in this room."
+
+
+def _heal_failure_hint(target_name: str, agent: AgentState, allies: list["AgentState"] | None = None, room: Room | None = None) -> str:
+    """Build a rich failure message explaining why a heal target wasn't found."""
+    target_lower = target_name.lower()
+    reason = ""
+
+    # Check if target is an NPC in the room
+    if room:
+        for npc in room.npcs:
+            if target_lower in npc.name.lower():
+                reason = f"'{npc.name}' is an NPC, not an ally. You can only heal allies in your room."
+                break
+
+    # Check if target is a mob
+    if not reason and room:
+        for mob in room.mobs:
+            if target_lower in mob.name.lower():
+                reason = f"'{mob.name}' is an enemy, not an ally. Use 'attack' or spells to fight enemies."
+                break
+
+    if not reason:
+        reason = f"No ally named '{target_name}' here."
+
+    # Always append who can actually be healed
+    allies_here = []
+    if allies:
+        allies_here = [a.name for a in allies if a.alive and a.room_id == agent.room_id and a.name != agent.name]
+    if allies_here:
+        reason += f" Allies in this room: {', '.join(allies_here)}, or yourself."
+    else:
+        reason += " No allies in this room. You can heal yourself."
+
+    return reason
+
+
+def resolve_attack(agent: AgentState, room: Room, target_name: str, tick: int, agents: list[AgentState] | None = None) -> list[GameEvent]:
     events = []
     mob = _find_mob(room, target_name)
     if mob is None:
-        events.append(GameEvent(tick, agent.name, f"attack {target_name}",
-                                f"No living mob named '{target_name}' here.", agent.room_id))
+        hint = _target_failure_hint(target_name, room, agents, agent.name)
+        events.append(GameEvent(tick, agent.name, f"attack {target_name}", hint, agent.room_id))
         return events
 
     damage = max(0, _agent_atk(agent) - 0)  # mobs have no pdef
@@ -59,7 +143,7 @@ def resolve_attack(agent: AgentState, room: Room, target_name: str, tick: int) -
     return events
 
 
-def resolve_missile(agent: AgentState, room: Room, target_name: str, tick: int) -> list[GameEvent]:
+def resolve_missile(agent: AgentState, room: Room, target_name: str, tick: int, agents: list[AgentState] | None = None) -> list[GameEvent]:
     events = []
     cost = SPELL_COSTS["missile"]
     if agent.mp < cost:
@@ -69,8 +153,8 @@ def resolve_missile(agent: AgentState, room: Room, target_name: str, tick: int) 
 
     mob = _find_mob(room, target_name)
     if mob is None:
-        events.append(GameEvent(tick, agent.name, f"missile {target_name}",
-                                f"No living mob named '{target_name}' here.", agent.room_id))
+        hint = _target_failure_hint(target_name, room, agents, agent.name)
+        events.append(GameEvent(tick, agent.name, f"missile {target_name}", hint, agent.room_id))
         return events
 
     agent.mp -= cost
@@ -106,8 +190,8 @@ def resolve_fireball(agent: AgentState, room: Room, tick: int) -> list[GameEvent
     base_dmg = _agent_mdmg(agent) * 2
     living_mobs = [m for m in room.mobs if m.hp > 0]
     if not living_mobs:
-        events.append(GameEvent(tick, agent.name, "fireball",
-                                "No mobs to target.", agent.room_id))
+        hint = _no_mobs_hint(room)
+        events.append(GameEvent(tick, agent.name, "fireball", hint, agent.room_id))
         return events
 
     parts = []
@@ -133,7 +217,7 @@ def resolve_fireball(agent: AgentState, room: Room, tick: int) -> list[GameEvent
     return events
 
 
-def resolve_poison(agent: AgentState, room: Room, target_name: str, tick: int) -> list[GameEvent]:
+def resolve_poison(agent: AgentState, room: Room, target_name: str, tick: int, agents: list[AgentState] | None = None) -> list[GameEvent]:
     events = []
     cost = SPELL_COSTS["poison"]
     if agent.mp < cost:
@@ -143,8 +227,8 @@ def resolve_poison(agent: AgentState, room: Room, target_name: str, tick: int) -
 
     mob = _find_mob(room, target_name)
     if mob is None:
-        events.append(GameEvent(tick, agent.name, f"poison {target_name}",
-                                f"No living mob named '{target_name}' here.", agent.room_id))
+        hint = _target_failure_hint(target_name, room, agents, agent.name)
+        events.append(GameEvent(tick, agent.name, f"poison {target_name}", hint, agent.room_id))
         return events
 
     agent.mp -= cost
@@ -154,7 +238,7 @@ def resolve_poison(agent: AgentState, room: Room, target_name: str, tick: int) -
     return events
 
 
-def resolve_heal(agent: AgentState, tick: int) -> list[GameEvent]:
+def resolve_heal(agent: AgentState, tick: int, target_name: str = "", allies: list[AgentState] | None = None, room: Room | None = None) -> list[GameEvent]:
     events = []
     cost = SPELL_COSTS["heal"]
     if agent.mp < cost:
@@ -162,13 +246,37 @@ def resolve_heal(agent: AgentState, tick: int) -> list[GameEvent]:
                                 f"Not enough MP ({agent.mp}/{cost}).", agent.room_id))
         return events
 
+    # Find target — default to self
+    target = agent
+    if target_name:
+        target_lower = target_name.lower()
+        # Check if targeting self
+        if target_lower not in agent.name.lower():
+            # Search allies in the same room
+            found = None
+            for a in (allies or []):
+                if a.alive and a.room_id == agent.room_id and target_lower in a.name.lower():
+                    found = a
+                    break
+            if found:
+                target = found
+            else:
+                hint = _heal_failure_hint(target_name, agent, allies, room)
+                events.append(GameEvent(tick, agent.name, f"heal {target_name}",
+                                        hint, agent.room_id))
+                return events
+
     agent.mp -= cost
-    heal_amount = math.ceil(agent.max_hp * HEAL_PERCENT)
-    old_hp = agent.hp
-    agent.hp = min(agent.max_hp, agent.hp + heal_amount)
-    actual = agent.hp - old_hp
-    result = f"{agent.name} heals for {actual} HP. (HP: {agent.hp}/{agent.max_hp})"
-    events.append(GameEvent(tick, agent.name, "heal", result, agent.room_id))
+    heal_amount = math.ceil(target.max_hp * HEAL_PERCENT)
+    old_hp = target.hp
+    target.hp = min(target.max_hp, target.hp + heal_amount)
+    actual = target.hp - old_hp
+    if target is agent:
+        result = f"{agent.name} heals self for {actual} HP. (HP: {agent.hp}/{agent.max_hp})"
+    else:
+        result = f"{agent.name} heals {target.name} for {actual} HP. ({target.name} HP: {target.hp}/{target.max_hp})"
+    action_label = f"heal {target.name}" if target is not agent else "heal"
+    events.append(GameEvent(tick, agent.name, action_label, result, agent.room_id))
     return events
 
 

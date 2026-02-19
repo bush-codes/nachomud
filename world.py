@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import random
 
 from models import Item, Mob, NPC, Room
 
@@ -39,6 +40,7 @@ def _parse_npc(data: dict) -> NPC:
         title=data.get("title", ""),
         dialogue=data.get("dialogue", []),
         item=item,
+        interactions_left=random.randint(1, 2),
     )
 
 
@@ -161,7 +163,7 @@ def build_sensory_context(
     else:
         parts.append("Enemies here: none")
 
-    # Items
+    # Items (pickups, not enemies)
     if room.items:
         item_strs = [i.name for i in room.items]
         parts.append(f"Items on ground: {', '.join(item_strs)}")
@@ -180,26 +182,15 @@ def build_sensory_context(
     else:
         parts.append("Allies here: none (you are alone)")
 
-    # Adjacent rooms
+    # Adjacent rooms (names only — no details to avoid confusing targets)
     dir_names = {"n": "north", "s": "south", "e": "east", "w": "west"}
     parts.append("")
-    parts.append("Nearby:")
+    parts.append("Exits:")
     for d in ("n", "s", "e", "w"):
         if d in room.exits:
             adj = rooms[room.exits[d]]
             describe_room(adj)
-            adj_mobs = [m for m in adj.mobs if m.hp > 0]
-            adj_info = adj.name
-            details = []
-            if adj_mobs:
-                details.append(f"Enemies: {', '.join(m.name for m in adj_mobs)}")
-            if adj.npcs:
-                details.append(f"NPCs: {', '.join(n.name for n in adj.npcs)}")
-            if adj.items:
-                details.append(f"Items: {', '.join(i.name for i in adj.items)}")
-            if details:
-                adj_info += f" ({', '.join(details)})"
-            parts.append(f"  {dir_names[d]} ({d}): {adj_info}")
+            parts.append(f"  {dir_names[d]} ({d}): {adj.name}")
         else:
             parts.append(f"  {dir_names[d]}: no exit")
 

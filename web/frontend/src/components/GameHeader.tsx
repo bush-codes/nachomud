@@ -1,10 +1,25 @@
 import React from "react";
 
+const OLLAMA_MODELS = [
+  "gemma3:4b",
+  "gemma3:12b",
+  "qwen2.5:7b",
+  "llama3.1:8b",
+  "gemma2:9b",
+  "mistral:7b",
+  "phi4:14b",
+  "llama3.2:3b",
+  "deepseek-r1:14b",
+];
+
 interface GameHeaderProps {
   outcome: "victory" | "defeat" | "timeout" | null;
-  totalTicks: number;
-  currentTick: number;
   loading: boolean;
+  currentTick: number;
+  maxTicks: number;
+  agentModel: string;
+  onMaxTicksChange: (value: number) => void;
+  onAgentModelChange: (value: string) => void;
   onRunSimulation: () => void;
   onResetSimulation: () => void;
 }
@@ -17,7 +32,7 @@ const BADGE_STYLES: Record<string, string> = {
   idle: "bg-gray-700 text-gray-300",
 };
 
-export default function GameHeader({ outcome, totalTicks, currentTick, loading, onRunSimulation, onResetSimulation }: GameHeaderProps) {
+export default function GameHeader({ outcome, loading, currentTick, maxTicks, agentModel, onMaxTicksChange, onAgentModelChange, onRunSimulation, onResetSimulation }: GameHeaderProps) {
   let status: string;
   let badgeStyle: string;
 
@@ -42,13 +57,38 @@ export default function GameHeader({ outcome, totalTicks, currentTick, loading, 
         <span className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${badgeStyle}`}>
           {status}
         </span>
-        {outcome && (
-          <span className="text-xs sm:text-sm text-gray-500">
-            Tick {currentTick} / {totalTicks}
+        {(loading || currentTick > 0) && (
+          <span className="text-xs sm:text-sm text-gray-400 font-mono">
+            Tick {currentTick}
           </span>
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <label className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-400">
+          Model
+          <select
+            value={agentModel}
+            onChange={(e) => onAgentModelChange(e.target.value)}
+            disabled={loading}
+            className="px-1.5 py-1 sm:py-1.5 bg-gray-800 border border-gray-700 rounded text-gray-200 text-xs sm:text-sm disabled:opacity-50"
+          >
+            {OLLAMA_MODELS.map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-1.5 text-xs sm:text-sm text-gray-400">
+          Ticks
+          <input
+            type="number"
+            min={1}
+            max={200}
+            value={maxTicks}
+            onChange={(e) => onMaxTicksChange(Math.max(1, Math.min(200, Number(e.target.value) || 1)))}
+            disabled={loading}
+            className="w-14 sm:w-16 px-1.5 py-1 sm:py-1.5 bg-gray-800 border border-gray-700 rounded text-gray-200 text-xs sm:text-sm text-center disabled:opacity-50"
+          />
+        </label>
         <button
           onClick={onResetSimulation}
           className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-700 hover:bg-red-600 text-white text-xs sm:text-sm font-semibold rounded transition-colors"
