@@ -297,8 +297,8 @@ Agents only know what they've personally witnessed — like a real MUD player's 
 When an agent produces an invalid action (e.g., using an ability they don't have, attacking an NPC):
 1. The action is validated against the current game state and agent's class abilities
 2. A dynamic list of valid actions is generated (only showing what's actually possible)
-3. The model is re-prompted: "Your action was invalid. Evaluate each option, then choose."
-4. Up to 2 retries; forces deliberation over real options instead of pattern-matching
+3. The model is re-prompted with the full original context (sensory, histories, equipment, party) plus the valid actions constraint at the top of the prompt
+4. Up to 2 retries; the model retains full context to reason about *why* to pick an action, not just which one is valid
 
 ## Architecture: Class-Specific Equipment
 
@@ -376,9 +376,9 @@ Used in: `DungeonMap.tsx` (agent dots), `AgentPanel.tsx` (cards, bars), `EventLo
 
 **North star: Agents should reason, not follow rules.** The whole point of using LLMs is emergent behavior — if we're writing conditional warnings and behavioral nudges into prompts, we're just building a scripted game with extra steps. Give the model the game state and let it figure out what to do. The dynamic commands list prevents impossible actions; everything else is the model's job.
 
-- **Action prompt essentials:** Identity + personality + class, quest, equipment/stats (HP/MP/AP), three-category history, sensory context (with item stats/restrictions and visited rooms), class-specific dynamic commands, Think/Do format.
+- **Action prompt essentials:** Identity + personality + class, quest, equipment/stats (HP/MP/AP), three-category history, sensory context (with item stats/restrictions and visited rooms), concrete valid actions list, Think/Do format.
 - **Comm prompt essentials:** Identity + personality, stats, sensory context, three-category history, available comm commands, Think/Comm format.
-- **Class-specific commands:** `_build_commands_help()` in `agent.py` looks up agent's class → only shows that class's abilities with correct costs. This prevents impossible actions.
+- **Concrete valid actions:** `build_valid_actions()` in `agent.py` enumerates every action the agent can take right now — specific mob/ally targets, ability descriptions, and costs. Filters by class, affordability, and room contents. This is information, not a behavioral nudge: the model sees what's possible and reasons about what's best.
 - **Information-first design:** Instead of rules ("don't heal at full HP"), give the model information it can reason from.
 - **Dynamic quest text:** `config.QUEST_DESCRIPTION` is set at runtime from each world's `meta.description`.
 - **Multi-line Think parsing:** `_parse_think_do()` and `_parse_think_comm()` capture everything between `Think:` and `Do:`/`Comm:` as reasoning, even across multiple lines.
@@ -414,7 +414,8 @@ Used in: `DungeonMap.tsx` (agent dots), `AgentPanel.tsx` (cards, bars), `EventLo
 - Single flat `action_history` — split into three categories: `action_history`, `comm_history`, `lore_history`
 - Round 0 planning discussion — replaced by per-tick communication phase
 - `build_discussion_prompt` / `get_agent_discussion` — removed with round 0
-- Static `COMMANDS_HELP` — replaced by `_build_commands_help()` which generates class-specific dynamic commands
+- Static `COMMANDS_HELP` — replaced by `build_valid_actions()` which generates concrete class-specific actions with targets, descriptions, and costs
+- `_build_commands_help()` — replaced by `build_valid_actions()` which enumerates concrete targets instead of placeholders
 - Mob counterattack system — replaced by LLM-driven mob turns (`mob_ai.py`)
 - Hardcoded 3-agent party — replaced by party selection from 6 classes
 - Name-based agent colors — replaced by class-based `CLASS_COLORS` with `getAgentColor()` helper

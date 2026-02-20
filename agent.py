@@ -9,68 +9,21 @@ from models import AgentState, Room
 
 log = logging.getLogger("nachomud")
 
-def _build_commands_help(agent: AgentState, room: Room) -> str:
-    """Build dynamic commands list based on agent's class and current state."""
-    lines = ["Available actions:"]
 
-    # Movement — only show exits that exist
-    dir_names = {"n": "north", "s": "south", "e": "east", "w": "west"}
-    for d in ("n", "s", "e", "w"):
-        if d in room.exits:
-            lines.append(f"  {d} — Move {dir_names[d]}")
-
-    # Class abilities — only show affordable ones with appropriate targets
-    living_mobs = [m for m in room.mobs if m.hp > 0]
-    class_def = CLASS_DEFINITIONS.get(agent.agent_class)
-    if class_def:
-        abilities = class_def["abilities"]
-    else:
-        abilities = ["attack"]
-
-    for ability_name in abilities:
-        defn = ABILITY_DEFINITIONS.get(ability_name)
-        if not defn:
+def _build_party_roster(agent: AgentState, allies: list[AgentState]) -> str:
+    """Build a party roster showing all allies with class, HP, and location."""
+    lines = ["=== YOUR PARTY ==="]
+    for a in allies:
+        if a.name == agent.name:
             continue
-
-        # Check affordability
-        cost = defn["cost"]
-        cost_type = defn["cost_type"]
-        if cost_type == "mp" and agent.mp < cost:
-            continue
-        if cost_type == "ap" and agent.ap < cost:
-            continue
-        if cost_type == "hp" and agent.hp <= cost:
-            continue
-
-        target = defn["target"]
-
-        # Enemy-targeting abilities only show if enemies present
-        if target in ("enemy", "all_enemies") and not living_mobs:
-            continue
-
-        # Build the command hint
-        cmd_display = ability_name.replace("_", " ")
-        if target == "enemy":
-            lines.append(f"  {cmd_display} <enemy> — {defn['description']}")
-        elif target == "ally":
-            lines.append(f"  {cmd_display} <ally> — {defn['description']}")
-        elif target == "ally_or_self":
-            lines.append(f"  {cmd_display} [ally] — {defn['description']}")
-        else:
-            lines.append(f"  {cmd_display} — {defn['description']}")
-
-    # Items — only show if items on ground
-    if room.items:
-        lines.append("  get <item> — Pick up item (auto-equips if better)")
-
-    # NPC interaction — only show if NPCs with dialogue remain
-    if any(n.interactions_left > 0 for n in room.npcs):
-        lines.append("  tell <NPC> <message> — Talk to an NPC")
-
+        resource = f"AP:{a.ap}/{a.max_ap}" if a.agent_class == "Warrior" else f"MP:{a.mp}/{a.max_mp}"
+        here = "here" if a.alive and a.room_id == agent.room_id else "not here"
+        status = f"HP:{a.hp}/{a.max_hp} {resource} [{here}]" if a.alive else "FALLEN"
+        lines.append(f"  {a.name} the {a.agent_class} — {status}")
     return "\n".join(lines)
 
 
-def build_comm_prompt(agent: AgentState, sensory: str, allies_here: list[str]) -> str:
+def build_comm_prompt(agent: AgentState, sensory: str, allies_here: list[str], allies: list[AgentState] | None = None) -> str:
     """Build the communication phase prompt (before action phase)."""
     history_block = ""
     if agent.action_history:
@@ -93,10 +46,14 @@ def build_comm_prompt(agent: AgentState, sensory: str, allies_here: list[str]) -
     comm_options.append("none — stay silent")
     options_block = "\n".join(f"  {o}" for o in comm_options)
 
+    party_block = _build_party_roster(agent, allies) if allies else ""
+
     prompt = f"""You are {agent.name} the {agent.agent_class}.
 {BASE_PERSONALITY} {agent.personality}
 
-HP: {agent.hp}/{agent.max_hp} | MP: {agent.mp}/{agent.max_mp}
+HP: {agent.hp}/{agent.max_hp} | {"AP: " + str(agent.ap) + "/" + str(agent.max_ap) if agent.max_ap > 0 else "MP: " + str(agent.mp) + "/" + str(agent.max_mp)}
+
+{party_block}
 
 === WHAT YOU SEE ===
 {sensory}
@@ -117,7 +74,7 @@ def get_agent_comm(
     room: Room | None = None, allies: list[AgentState] | None = None,
 ) -> tuple[str, str | None]:
     """Get optional communication from agent. Returns (think, comm_action_or_None)."""
-    prompt = build_comm_prompt(agent, sensory, allies_here)
+    prompt = build_comm_prompt(agent, sensory, allies_here, allies=allies)
     system = f"You are {agent.name} the {agent.agent_class}. Decide if you need to communicate with allies before acting. Say 'none' if nothing important to share."
 
     raw = chat(system=system, message=prompt, model=config.AGENT_MODEL, max_tokens=150)
@@ -194,7 +151,7 @@ def _is_valid_comm(cmd: str, arg: str, agent: AgentState, room: Room, allies: li
     return False
 
 
-def build_action_prompt(agent: AgentState, sensory: str, room: Room | None = None) -> str:
+def build_action_prompt(agent: AgentState, sensory: str, room: Room | None = None, allies: list[AgentState] | None = None) -> str:
     history_block = ""
     if agent.action_history:
         recent = agent.action_history[-ACTION_HISTORY_SIZE:]
@@ -207,7 +164,12 @@ def build_action_prompt(agent: AgentState, sensory: str, room: Room | None = Non
         history_block += "\n=== NPC LORE ===\n" + "\n".join(f"- {h}" for h in recent_lore)
 
     # Dynamic commands based on current state
-    commands_help = _build_commands_help(agent, room) if room else ""
+    if room and allies is not None:
+        valid = build_valid_actions(agent, room, allies)
+        commands_help = "Available actions:\n" + "\n".join(f"  {a}" for a in valid)
+    else:
+        commands_help = ""
+    party_block = _build_party_roster(agent, allies) if allies else ""
 
     prompt = f"""You are {agent.name} the {agent.agent_class}.
 {BASE_PERSONALITY} {agent.personality}
@@ -217,6 +179,8 @@ Your quest: {config.QUEST_DESCRIPTION}
 === YOUR EQUIPMENT ===
 Weapon: {agent.weapon.name} (ATK:{agent.weapon.atk}) | Armor: {agent.armor.name} (PDEF:{agent.armor.pdef}) | Ring: {agent.ring.name} (MDMG:{agent.ring.mdmg})
 HP: {agent.hp}/{agent.max_hp} | {"AP: " + str(agent.ap) + "/" + str(agent.max_ap) if agent.max_ap > 0 else "MP: " + str(agent.mp) + "/" + str(agent.max_mp)}
+
+{party_block}
 {history_block}
 
 === WHAT YOU SEE ===
@@ -234,13 +198,16 @@ MAX_RETRIES = 2
 
 
 def build_valid_actions(agent: AgentState, room: Room, allies: list[AgentState]) -> list[str]:
-    """Build a list of valid actions for the current game state (class-aware)."""
+    """Build a list of valid actions for the current game state (class-aware).
+
+    Each entry includes the concrete command, specific targets, cost, and description.
+    """
     actions = []
 
     # Movement
     dir_names = {"n": "north", "s": "south", "e": "east", "w": "west"}
     for d, target_id in room.exits.items():
-        actions.append(f"{d} - Move {dir_names.get(d, d)}")
+        actions.append(f"{d} — Move {dir_names.get(d, d)}")
 
     # Class abilities
     living_mobs = [m for m in room.mobs if m.hp > 0]
@@ -264,42 +231,52 @@ def build_valid_actions(agent: AgentState, room: Room, allies: list[AgentState])
         target = defn["target"]
         cmd_display = ability_name.replace("_", " ")
         cost_str = f"({cost} {cost_type.upper()})" if cost_type != "free" else ""
+        desc = defn["description"]
 
         if target == "enemy":
             for mob in living_mobs:
-                actions.append(f"{cmd_display} {mob.name} {cost_str}".strip())
+                actions.append(f"{cmd_display} {mob.name} — {desc} {cost_str}".strip())
         elif target == "all_enemies":
             if living_mobs:
-                actions.append(f"{cmd_display} - AoE {cost_str}".strip())
+                actions.append(f"{cmd_display} — {desc} {cost_str}".strip())
         elif target == "ally":
             for a in allies:
                 if a.alive and a.room_id == agent.room_id and a.name != agent.name:
-                    actions.append(f"{cmd_display} {a.name} {cost_str}".strip())
+                    actions.append(f"{cmd_display} {a.name} — {desc} {cost_str}".strip())
         elif target == "ally_or_self":
-            actions.append(f"{cmd_display} - Self {cost_str}".strip())
+            actions.append(f"{cmd_display} — {desc} (self) {cost_str}".strip())
             for a in allies:
                 if a.alive and a.room_id == agent.room_id and a.name != agent.name:
-                    actions.append(f"{cmd_display} {a.name} {cost_str}".strip())
+                    actions.append(f"{cmd_display} {a.name} — {desc} {cost_str}".strip())
         elif target == "self":
-            actions.append(f"{cmd_display} {cost_str}".strip())
+            actions.append(f"{cmd_display} — {desc} {cost_str}".strip())
 
     # Items
     for item in room.items:
-        actions.append(f"get {item.name}")
+        actions.append(f"get {item.name} — Pick up item (auto-equips if better)")
 
     # NPCs
     for npc in room.npcs:
         if npc.interactions_left > 0:
-            actions.append(f"tell {npc.name} <message>")
+            actions.append(f"tell {npc.name} <message> — Talk to NPC")
 
     return actions
 
 
-def build_retry_prompt(agent: AgentState, invalid_action: str, valid_actions: list[str]) -> str:
+def build_retry_prompt(original_prompt: str, invalid_action: str, valid_actions: list[str]) -> str:
     actions_list = "\n".join(f"  - {a}" for a in valid_actions)
-    return f"""Your action "{invalid_action}" was invalid. Here are your available actions:
+
+    # Strip the trailing Think:/Do: lines from the original prompt
+    lines = original_prompt.rstrip().split("\n")
+    while lines and lines[-1].strip().startswith(("Think:", "Do:")):
+        lines.pop()
+    base = "\n".join(lines).rstrip()
+
+    return f"""Your action "{invalid_action}" was invalid. You MUST choose from these actions:
 
 {actions_list}
+
+{base}
 
 Evaluate each option for your current situation, then choose the best one.
 Think: <evaluate your options>
@@ -420,7 +397,7 @@ def get_agent_action(
     room: Room | None = None, allies: list[AgentState] | None = None,
 ) -> tuple[str, str, list[str]]:
     """Returns (think, action, retries) tuple. retries is a list of invalid action strings that were rejected."""
-    prompt = build_action_prompt(agent, sensory, room=room)
+    prompt = build_action_prompt(agent, sensory, room=room, allies=allies)
     system = f"You are {agent.name} the {agent.agent_class} in a dungeon crawler. Think briefly about your situation, then output your command after 'Do:'."
 
     raw = chat(system=system, message=prompt, model=config.AGENT_MODEL, max_tokens=150)
@@ -439,7 +416,7 @@ def get_agent_action(
                 break  # nothing valid to do (shouldn't happen)
             retries.append(action)
             log.info("Retry %d/%d for %s: '%s' invalid. Valid: %s", attempt + 1, MAX_RETRIES, agent.name, action, valid_actions)
-            retry_prompt = build_retry_prompt(agent, action, valid_actions)
+            retry_prompt = build_retry_prompt(prompt, action, valid_actions)
             raw = chat(system=system, message=retry_prompt, model=config.AGENT_MODEL, max_tokens=200)
             think, action = _parse_think_do(raw)
             cmd, arg = parse_action(action)
