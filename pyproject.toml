@@ -1,0 +1,14 @@
+[project]
+name = "nachomud"
+version = "0.1.0"
+description = "Open-source text MUD with a procedurally generated world. AI agents play alongside human players in a shared world."
+readme = "README.md"
+license = {file = "LICENSE"}
+requires-python = ">=3.10"
+
+[tool.setuptools.packages.find]
+include = ["nachomud*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

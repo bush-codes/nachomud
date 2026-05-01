@@ -1,0 +1,215 @@
+{
+  "meta": {
+    "world_id": "silverbrook",
+    "name": "Silverbrook",
+    "description": "A small frontier town nestled at the edge of the wild lands. Stone houses with copper roofs surround a cobblestone market square. The road north climbs toward the watchtower and beyond into untamed country.",
+    "zone_tag": "silverbrook_town"
+  },
+  "rooms": [
+    {
+      "room_id": "silverbrook.inn",
+      "name": "The Bronze Hart Inn",
+      "description": "The common room of The Bronze Hart Inn. A massive stone hearth crackles along the western wall, throwing flickering light across worn oak tables. The smell of roasting meat and woodsmoke fills the air. A staircase climbs to the rooms above; a small bar runs along the back wall. The exit leads north to the market square.",
+      "exits": {"north": "silverbrook.market_square"},
+      "zone_tag": "silverbrook_town",
+      "is_inn": true
+    },
+    {
+      "room_id": "silverbrook.market_square",
+      "name": "Market Square",
+      "description": "The cobbled heart of Silverbrook. Stalls cluster around a stone fountain whose carved stag spits a thin stream of water. Townsfolk haggle over apples, leather goods, and bolts of cloth. A weathered notice board near the fountain bears tacked parchments. Roads lead north up to the gate, east to the smithy, west to the tavern, and south back to the inn.",
+      "exits": {
+        "north": "silverbrook.north_gate",
+        "east": "silverbrook.smithy",
+        "west": "silverbrook.tavern",
+        "south": "silverbrook.inn"
+      },
+      "zone_tag": "silverbrook_town"
+    },
+    {
+      "room_id": "silverbrook.smithy",
+      "name": "Old John's Smithy",
+      "description": "The forge glows orange under a peaked roof of slate tiles. Hammers, tongs, and blanks of iron line the walls; an anvil sits squarely in the center of a hard-packed earthen floor. The clang of metal-on-metal carries from the back. A rack of finished blades stands near the door. The market square lies west.",
+      "exits": {"west": "silverbrook.market_square"},
+      "zone_tag": "silverbrook_town"
+    },
+    {
+      "room_id": "silverbrook.tavern",
+      "name": "The Crooked Stag Tavern",
+      "description": "Low ceiling beams stained black from hearthsmoke and time. A long bar runs the length of the room, behind which Bren the tavernkeeper polishes pewter mugs. Locals nurse ales at scarred trestle tables, and a dartboard hangs near the kitchen door. The market square is east.",
+      "exits": {"east": "silverbrook.market_square"},
+      "zone_tag": "silverbrook_town"
+    },
+    {
+      "room_id": "silverbrook.north_gate",
+      "name": "North Gate",
+      "description": "A pair of oaken gates banded in iron stand open in the town's stone wall. A guardhouse leans against the inside of the wall to your right; a torch in a sconce sputters above the doorway. Beyond the threshold the road climbs north toward the watchtower; back south, the market square bustles with life.",
+      "exits": {
+        "north": "silverbrook.watchtower",
+        "south": "silverbrook.market_square"
+      },
+      "zone_tag": "silverbrook_town"
+    },
+    {
+      "room_id": "silverbrook.watchtower",
+      "name": "Watchtower Overlook",
+      "description": "The road ends at the foot of a squat stone watchtower. From the parapet thirty feet above, you can see for miles — pale grass, dark forests, and farther still the jagged shadow of mountains where it's said dragons used to nest. A wooden ladder climbs to the platform. The path back south leads to the gate. A faint deer-trail winds north into the open country.",
+      "exits": {"south": "silverbrook.north_gate", "north": "wild.frontier_north"},
+      "zone_tag": "silverbrook_town"
+    }
+  ],
+  "npcs": [
+    {
+      "npc_id": "marta_innkeeper",
+      "name": "Old Marta",
+      "title": "Innkeeper",
+      "personality": "Round-faced and warm. Knows every traveler who's passed through in the last decade, and a fair few who haven't. Treats first-time guests like long-lost children.",
+      "faction": "village_human",
+      "routines": [
+        {"start_hr": 0,  "end_hr": 6,  "location_id": "silverbrook.inn", "activity": "asleep behind the bar"},
+        {"start_hr": 6,  "end_hr": 24, "location_id": "silverbrook.inn", "activity": "tending the bar and cooking"}
+      ],
+      "wares": [
+        {"name": "Trail Rations", "slot": "consumable", "price": 5},
+        {"name": "Lantern", "slot": "consumable", "price": 8},
+        {"name": "Bedroll", "slot": "consumable", "price": 3}
+      ],
+      "lore": [
+        "A room upstairs is 5 silver a night, with breakfast — sleep here and you'll wake at the inn even if you fall in the wild.",
+        "Captain Halvar at the watchtower has been jumpy lately; he says he saw lights moving in the foothills three nights running.",
+        "Old John at the smithy lost his apprentice to the wild last spring. Don't ask him about it unless you've got news.",
+        "The deer-trail north of the watchtower used to lead to a hill shrine. Hasn't been a pilgrim through here in years.",
+        "If you head north and don't come back, the gate captain will note it. She always notes it."
+      ]
+    },
+    {
+      "npc_id": "greta_fruit",
+      "name": "Greta",
+      "title": "Fruit Seller",
+      "personality": "Cheerful and gossipy. Wears a bright red shawl. Always has a kind word and a sharper opinion.",
+      "faction": "village_human",
+      "routines": [
+        {"start_hr": 6,  "end_hr": 17, "location_id": "silverbrook.market_square", "activity": "selling fruit from her stall"},
+        {"start_hr": 17, "end_hr": 21, "location_id": "silverbrook.tavern",        "activity": "having an ale and trading rumors"},
+        {"start_hr": 21, "end_hr": 30, "location_id": "elsewhere",                  "activity": "asleep at home"}
+      ],
+      "wares": [
+        {"name": "Red Apple", "slot": "consumable", "price": 2},
+        {"name": "Loaf of Bread", "slot": "consumable", "price": 2},
+        {"name": "Cheese Wedge", "slot": "consumable", "price": 3},
+        {"name": "Honey Pear", "slot": "consumable", "price": 3}
+      ],
+      "lore": [
+        "The honey pears come from old man Aldric's orchard south of town. He hasn't been to market in a fortnight, which is unusual.",
+        "There's a notice on the board about a wolf taking sheep up by the watchtower road. Captain Vesna pinned it herself.",
+        "Old John's apprentice went hunting that wolf, you know. That was last spring. Never came back.",
+        "Bren at the tavern says travelers from the north have been talking about strange lights near the old hill shrine.",
+        "If you're new in town, stop by the inn first — Marta'll have a room for you, and she knows everything that's worth knowing."
+      ]
+    },
+    {
+      "npc_id": "town_guard",
+      "name": "Town Guard",
+      "title": "Watchman",
+      "personality": "Bored, dutiful, eyes everyone with the slight suspicion that comes from years on the same post.",
+      "faction": "village_human",
+      "routines": [
+        {"start_hr": 0,  "end_hr": 8,  "location_id": "silverbrook.market_square", "activity": "leaning on a halberd, fighting sleep"},
+        {"start_hr": 8,  "end_hr": 20, "location_id": "silverbrook.market_square", "activity": "patrolling the square"},
+        {"start_hr": 20, "end_hr": 24, "location_id": "elsewhere",                  "activity": "off-duty"}
+      ],
+      "lore": [
+        "Two cattle went missing from the western pastures last week. Wolves, I'd wager. Or worse.",
+        "I've been on this post for nine years. Nothing comes through Silverbrook I don't see.",
+        "Captain Vesna runs the gate. Don't try to slip past her — she's got eyes like a hawk.",
+        "The wild north of here used to be tame country. People hunted it. Doesn't feel that way anymore.",
+        "If you're heading out the gate, take a sword. The militia ain't what it used to be."
+      ]
+    },
+    {
+      "npc_id": "old_john_smith",
+      "name": "Old John",
+      "title": "Blacksmith",
+      "personality": "A weathered Dwarf with soot-blackened hands. Speaks in short bursts. Pretends not to care, secretly takes pride in every blade.",
+      "faction": "village_human",
+      "routines": [
+        {"start_hr": 6,  "end_hr": 18, "location_id": "silverbrook.smithy", "activity": "working the forge"},
+        {"start_hr": 18, "end_hr": 22, "location_id": "silverbrook.tavern", "activity": "nursing ale at the bar"},
+        {"start_hr": 22, "end_hr": 30, "location_id": "elsewhere",          "activity": "asleep above the smithy"}
+      ],
+      "wares": [
+        {"name": "Iron Dagger", "slot": "weapon", "damage_die": "1d4", "damage_type": "piercing", "finesse": true, "price": 5},
+        {"name": "Steel Shortsword", "slot": "weapon", "damage_die": "1d6", "damage_type": "piercing", "finesse": true, "price": 25},
+        {"name": "Steel Longsword", "slot": "weapon", "damage_die": "1d8", "damage_type": "slashing", "versatile_die": "1d10", "price": 50},
+        {"name": "Hand Axe", "slot": "weapon", "damage_die": "1d6", "damage_type": "slashing", "price": 12},
+        {"name": "Iron Helm", "slot": "armor", "armor_base": 12, "armor_max_dex": 4, "price": 15},
+        {"name": "Plain Buckler", "slot": "shield", "shield_bonus": 2, "price": 10}
+      ],
+      "lore": [
+        "I trained Pell — my apprentice — for six winters. He went hunting a wolf last spring. We never found him.",
+        "I forge from Stoneveil iron, mostly. Best ore for two hundred miles. The vein's nearly tapped though.",
+        "If you're going north, take the helm at minimum. Skull's heavy stuff to lose.",
+        "The shrine on the hill — north of the watchtower — that's old work. Older than anything in the smithy. Older than the town.",
+        "My nephew Bren runs the tavern. Tell him I said you're alright and he'll knock a copper off your ale."
+      ]
+    },
+    {
+      "npc_id": "bren_tavernkeeper",
+      "name": "Bren",
+      "title": "Tavernkeeper",
+      "personality": "A wiry man with a long memory. Knows all the local rumors but parts with them grudgingly.",
+      "faction": "village_human",
+      "routines": [
+        {"start_hr": 12, "end_hr": 26, "location_id": "silverbrook.tavern", "activity": "polishing pewter and serving ale"},
+        {"start_hr": 2,  "end_hr": 12, "location_id": "elsewhere",          "activity": "asleep upstairs"}
+      ],
+      "wares": [
+        {"name": "Mug of Ale", "slot": "consumable", "price": 1},
+        {"name": "Hot Stew", "slot": "consumable", "price": 4},
+        {"name": "Whiskey Shot", "slot": "consumable", "price": 3}
+      ],
+      "lore": [
+        "A pair of southern merchants drank here last week. They said the Stoneveil road is choked with bandits since the spring thaw.",
+        "Old John drinks here every night after sundown. He'll talk to no one most nights, but he listens.",
+        "The hill shrine north of town used to draw pilgrims. Then the lights started, and the pilgrims stopped.",
+        "Greta's honey pears come from Aldric's orchard. Aldric hasn't been to market in two weeks. Worth a thought.",
+        "Captain Halvar comes down for a drink one night a month. That's the night to find him talkative."
+      ]
+    },
+    {
+      "npc_id": "gate_captain",
+      "name": "Captain Vesna",
+      "title": "Gate Captain",
+      "personality": "Severe, observant, scars on her forearms. Doesn't waste words.",
+      "faction": "village_human",
+      "routines": [
+        {"start_hr": 6,  "end_hr": 22, "location_id": "silverbrook.north_gate", "activity": "watching travelers pass"},
+        {"start_hr": 22, "end_hr": 30, "location_id": "elsewhere",               "activity": "off-shift"}
+      ],
+      "lore": [
+        "I log every traveler in and out. Last week six went north. Three came back. Make of that what you will.",
+        "Don't leave the gate without a weapon. Bandits, wolves, and worse, down the Stoneveil road.",
+        "The watchtower's a fifteen-minute walk north. Captain Halvar's been there since before I was born.",
+        "If you've never been north of the gate, take it slow. Every step you take, the DM weaves the country a little wider.",
+        "Old man Aldric's orchard is south, not north — and even there, there's been talk of trouble lately."
+      ]
+    },
+    {
+      "npc_id": "watchtower_captain",
+      "name": "Captain Halvar",
+      "title": "Watchtower Captain",
+      "personality": "Aging, sharp-eyed, with stories of beasts and battles in equal measure. Glad to talk if you bring news from the south.",
+      "faction": "village_human",
+      "routines": [
+        {"start_hr": 0,  "end_hr": 24, "location_id": "silverbrook.watchtower", "activity": "scanning the horizon from the parapet"}
+      ],
+      "lore": [
+        "Three nights running I've seen lights up at the old hill shrine. Lights that don't behave like fire and don't behave like men.",
+        "There's a deer-trail north of here that climbs into the foothills. It used to lead to the shrine. Walk it with care.",
+        "I had an apprentice once — Pell. Old John's lad. Went up the trail last spring. Never saw him come back down.",
+        "The Frostpeak mountains far to the north used to host dragons. Used to. Lately I'm not so sure they've stayed gone.",
+        "If you head north and need a place to sleep, double back to Silverbrook before dark. Whatever's up there, it walks at night."
+      ]
+    }
+  ]
+}

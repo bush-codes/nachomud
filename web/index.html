@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NachoMUD</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+  <style>
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      background: #0a0a0a; color: #d8d8d8;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      overflow: hidden;
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 1fr 240px;
+      grid-template-rows: 32px 1fr 48px;
+      height: 100vh;
+    }
+    #header {
+      grid-column: 1 / 3;
+      background: #111; color: #888;
+      border-bottom: 1px solid #222;
+      padding: 6px 12px; font-size: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    #header strong { color: #5dd; }
+    #status { color: #aaa; }
+    #status .ok  { color: #5d5; }
+    #status .err { color: #d55; }
+
+    #term {
+      grid-column: 1; grid-row: 2;
+      padding: 8px; box-sizing: border-box; overflow: hidden;
+    }
+    #term.hidden { display: none; }
+
+    #landing {
+      grid-column: 1; grid-row: 2;
+      padding: 48px 32px; box-sizing: border-box; overflow-y: auto;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: flex-start; text-align: center;
+    }
+    #landing.hidden { display: none; }
+    #landing h1 { font-size: 36px; color: #5dd; margin: 0 0 8px; letter-spacing: 0.04em; }
+    #landing .tagline { color: #aaa; font-size: 14px; max-width: 520px; margin: 0 0 32px; line-height: 1.5; }
+    #landing .auth-card {
+      background: #0c0c0c; border: 1px solid #222; border-radius: 6px;
+      padding: 24px 28px; max-width: 420px; width: 100%; box-sizing: border-box;
+    }
+    #landing .auth-card h2 { color: #eee; font-size: 18px; margin: 0 0 6px; }
+    #landing .auth-card p { color: #888; font-size: 12px; margin: 0 0 16px; }
+    #email-input {
+      width: 100%; box-sizing: border-box;
+      background: #141414; border: 1px solid #333; border-radius: 4px;
+      padding: 10px 12px; color: #d8d8d8;
+      font-family: inherit; font-size: 13px;
+    }
+    #email-input:focus { outline: none; border-color: #5dd; }
+    #send-link {
+      width: 100%; margin-top: 10px;
+      background: #5dd; color: #0a0a0a; border: none; border-radius: 4px;
+      padding: 10px; font-family: inherit; font-weight: 600; font-size: 13px; cursor: pointer;
+    }
+    #send-link:hover:not([disabled]) { background: #7ee; }
+    #send-link[disabled] { opacity: 0.5; cursor: default; }
+    #auth-msg { margin-top: 12px; font-size: 12px; min-height: 16px; }
+    #auth-msg.ok  { color: #5d5; }
+    #auth-msg.err { color: #d55; }
+    #landing .footnote { color: #555; font-size: 11px; margin-top: 24px; max-width: 520px; }
+    #landing .footnote a { color: #888; }
+
+    #sidebar {
+      grid-column: 2; grid-row: 2;
+      background: #0c0c0c; border-left: 1px solid #222;
+      box-sizing: border-box; padding: 8px 6px;
+      overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    #sidebar-actors { display: flex; flex-direction: column; gap: 6px; }
+    #sidebar-footer {
+      margin-top: auto; padding-top: 8px;
+      border-top: 1px solid #222;
+      font-size: 11px; color: #888; text-align: center;
+    }
+    #sidebar-footer.hidden { display: none; }
+    #sidebar-footer .who { display: block; color: #5dd; margin-bottom: 4px; }
+    #logout-link {
+      color: #888; text-decoration: none; cursor: pointer;
+      background: none; border: none; font-family: inherit; font-size: 11px;
+      padding: 4px 8px;
+    }
+    #logout-link:hover { color: #d55; }
+
+    .actor {
+      background: #141414; border: 1px solid #222; border-radius: 4px;
+      padding: 8px 10px; cursor: pointer; color: #d8d8d8;
+      font-family: inherit; font-size: 12px; text-align: left;
+      transition: background 80ms, border-color 80ms;
+    }
+    .actor:hover { background: #1c1c1c; border-color: #333; }
+    .actor.active {
+      background: #1a2a2a; border-color: #5dd;
+      box-shadow: inset 2px 0 0 #5dd;
+    }
+    .actor.dead { opacity: 0.55; }
+    .actor .name { font-weight: 600; color: #eee; }
+    .actor .display { color: #5dd; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 2px; }
+    .actor .meta { color: #888; font-size: 11px; margin-top: 1px; }
+    .actor .stats { margin-top: 6px; padding-top: 6px; border-top: 1px solid #222; color: #aaa; font-size: 11px; display: none; }
+    .actor.active .stats { display: block; }
+    .actor .bar { display: flex; justify-content: space-between; gap: 8px; }
+    .actor .bar span { white-space: nowrap; }
+    .actor.my-player .display { color: #f0d060; }
+    .actor.my-player.placeholder .name { color: #888; font-style: italic; }
+
+    #bottombar {
+      grid-column: 1 / 3; grid-row: 3;
+      background: #0c0c0c; border-top: 1px solid #222;
+      padding: 0 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 12px;
+    }
+    #bottombar .left, #bottombar .right { display: flex; align-items: center; gap: 8px; }
+    #donate {
+      background: #f0d060; color: #1a1a1a;
+      padding: 6px 12px; border-radius: 4px;
+      text-decoration: none; font-weight: 600; font-family: inherit;
+    }
+    #donate:hover { background: #ffe080; }
+    #report-bug, .footer-link {
+      color: #888; text-decoration: none; font-size: 12px;
+    }
+    #report-bug:hover, .footer-link:hover { color: #5dd; }
+    .footer-sep { color: #444; padding: 0 4px; }
+    #ad-slot {
+      color: #555; font-size: 11px;
+      min-height: 36px; min-width: 240px;
+      display: none;
+      align-items: center; justify-content: center;
+    }
+    #cookie-banner {
+      position: fixed; bottom: 8px; right: 8px;
+      max-width: 360px;
+      background: #161616; border: 1px solid #333; border-radius: 6px;
+      padding: 14px 16px; font-size: 12px; color: #aaa;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      z-index: 100;
+    }
+    #cookie-banner.hidden { display: none; }
+    #cookie-banner p { margin: 0 0 10px; line-height: 1.5; }
+    #cookie-banner a { color: #5dd; }
+    #cookie-banner button {
+      background: #5dd; color: #0a0a0a; border: none; border-radius: 3px;
+      padding: 6px 14px; cursor: pointer; font-family: inherit; font-weight: 600; font-size: 12px;
+    }
+    #cookie-banner button:hover { background: #7ee; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="header">
+      <span><strong>NachoMUD</strong></span>
+      <span id="status">connecting…</span>
+    </div>
+    <div id="term" class="hidden"></div>
+    <div id="landing">
+      <h1>NachoMUD</h1>
+      <p class="tagline">
+        A text-based MUD with a procedurally-generated world. Four AI agents
+        explore alongside human players in one shared world. Sign in by email
+        to claim a character — or watch the agents play from the sidebar.
+      </p>
+      <div class="auth-card">
+        <h2>Sign in</h2>
+        <p>Enter your email and we'll send you a one-click sign-in link.</p>
+        <input id="email-input" type="email" placeholder="you@example.com" autocomplete="email" />
+        <button id="send-link">Send link</button>
+        <div id="auth-msg"></div>
+      </div>
+      <p class="footnote">
+        No password. The link is valid for 15 minutes and can only be used once.
+        <a href="https://github.com/bush-codes/nachomud" target="_blank" rel="noopener">Source</a>.
+      </p>
+    </div>
+    <div id="sidebar">
+      <div id="sidebar-actors"></div>
+      <div id="sidebar-footer" class="hidden">
+        <span class="who" id="account-who"></span>
+        <button id="logout-link">Sign out</button>
+      </div>
+    </div>
+    <div id="bottombar">
+      <div class="left">
+        <a id="donate" href="https://www.buymeacoffee.com/nachomud" target="_blank" rel="noopener">
+          ☕ Donate
+        </a>
+        <span style="color:#666">— support NachoMUD</span>
+      </div>
+      <div class="right">
+        <a class="footer-link" href="/privacy" target="_blank" rel="noopener">Privacy</a>
+        <span class="footer-sep">·</span>
+        <a class="footer-link" href="/terms" target="_blank" rel="noopener">Terms</a>
+        <span class="footer-sep">·</span>
+        <a id="report-bug" href="https://github.com/bush-codes/nachomud/issues" target="_blank" rel="noopener">
+          🐞 Report a bug
+        </a>
+        <div id="ad-slot"></div>
+      </div>
+    </div>
+    <div id="cookie-banner" class="hidden">
+      <p>NachoMUD uses a signed session cookie when you sign in. Ads, when
+      shown, may set additional cookies from their providers. See
+      <a href="/privacy" target="_blank" rel="noopener">Privacy</a> and
+      <a href="/terms" target="_blank" rel="noopener">Terms</a> for details.</p>
+      <button id="cookie-ack">Got it</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+  <script src="/static/client.js?v=1"></script>
+</body>
+</html>
