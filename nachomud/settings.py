@@ -34,3 +34,9 @@ DEATH_XP_PENALTY_PCT = 0.10
 
 # Starting gold for new characters
 STARTING_GOLD = 25
+
+# Seconds between agent ticks (per agent — staggered across the four).
+# Lower = livelier agents, more LLM load. On a CPU-only host like
+# Lightsail you'll want 30-60s to keep up; with GPU inference 5-10s
+# is fine.
+AGENT_TICK_SECONDS = float(os.environ.get("NACHOMUD_AGENT_TICK_SECONDS", "8"))

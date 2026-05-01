@@ -23,7 +23,7 @@ from nachomud.world.routines import hour_from_minute, npcs_in_room
 log = logging.getLogger("nachomud.agentrunner")
 
 
-AGENT_TICK_SECONDS = 8.0
+from nachomud.settings import AGENT_TICK_SECONDS  # noqa: E402  re-export for back-compat
 DEAD_TICK_SECONDS = 4.0
 
 
