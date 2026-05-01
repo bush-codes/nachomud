@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 56" shape-rendering="crispEdges">
+  <!-- Icon (40×40, padded into the left ~48px) -->
+  <g transform="translate(4, 4) scale(1.25)">
+    <rect x="14" y="3" width="4" height="4" fill="#f0d060"/>
+    <rect x="15" y="7" width="2" height="5" fill="#2a7878"/>
+    <rect x="9" y="12" width="14" height="2" fill="#5dd"/>
+    <rect x="14" y="14" width="4" height="12" fill="#5dd"/>
+    <rect x="15" y="26" width="2" height="2" fill="#5dd"/>
+    <rect x="18" y="15" width="1" height="1" fill="#5dd"/>
+    <rect x="19" y="17" width="1" height="1" fill="#5dd" opacity="0.85"/>
+    <rect x="18" y="19" width="1" height="1" fill="#5dd" opacity="0.7"/>
+    <rect x="20" y="21" width="1" height="1" fill="#5dd" opacity="0.6"/>
+    <rect x="18" y="23" width="1" height="1" fill="#5dd" opacity="0.5"/>
+  </g>
+
+  <!-- Wordmark — match the rest of the site's monospace family -->
+  <text x="60" y="38" fill="#5dd"
+        font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace"
+        font-size="28" font-weight="700" letter-spacing="2">NachoMUD</text>
+</svg>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>NachoMUD</title>
-  <link rel="icon" href="data:," />
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
   <style>
     html, body {
@@ -43,7 +43,8 @@
       justify-content: flex-start; text-align: center;
     }
     #landing.hidden { display: none; }
-    #landing h1 { font-size: 36px; color: #5dd; margin: 0 0 8px; letter-spacing: 0.04em; }
+    #landing #logo { width: 280px; max-width: 80vw; height: auto; margin: 0 0 8px; display: block; }
+    #header #brand-icon { height: 20px; width: auto; vertical-align: -4px; margin-right: 6px; }
     #landing .tagline { color: #aaa; font-size: 14px; max-width: 520px; margin: 0 0 32px; line-height: 1.5; }
     #landing .auth-card {
       background: #0c0c0c; border: 1px solid #222; border-radius: 6px;
@@ -161,12 +162,12 @@
 <body>
   <div class="app">
     <div id="header">
-      <span><strong>NachoMUD</strong></span>
+      <span><img id="brand-icon" src="/static/favicon.svg" alt="" /><strong>NachoMUD</strong></span>
       <span id="status">connecting…</span>
     </div>
     <div id="term" class="hidden"></div>
     <div id="landing">
-      <h1>NachoMUD</h1>
+      <img id="logo" src="/static/logo.svg" alt="NachoMUD" />
       <p class="tagline">
         A text-based MUD with a procedurally-generated world. Four AI agents
         explore alongside human players in one shared world. Sign in by email

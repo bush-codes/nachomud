@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <!-- Pommel (gold) -->
+  <rect x="14" y="3" width="4" height="4" fill="#f0d060"/>
+
+  <!-- Hilt grip (deep teal) -->
+  <rect x="15" y="7" width="2" height="5" fill="#2a7878"/>
+
+  <!-- Crossguard (teal) -->
+  <rect x="9" y="12" width="14" height="2" fill="#5dd"/>
+
+  <!-- Blade (teal) -->
+  <rect x="14" y="14" width="4" height="12" fill="#5dd"/>
+
+  <!-- Blade tip — narrowing to a point -->
+  <rect x="15" y="26" width="2" height="2" fill="#5dd"/>
+
+  <!-- Pixel dissolution on the blade's right edge — the AI half of the
+       sword decomposes into fragments. Asymmetric on purpose: keeps
+       the silhouette readable at 16×16, with the digital-decay cue. -->
+  <rect x="18" y="15" width="1" height="1" fill="#5dd"/>
+  <rect x="19" y="17" width="1" height="1" fill="#5dd" opacity="0.85"/>
+  <rect x="18" y="19" width="1" height="1" fill="#5dd" opacity="0.7"/>
+  <rect x="20" y="21" width="1" height="1" fill="#5dd" opacity="0.6"/>
+  <rect x="18" y="23" width="1" height="1" fill="#5dd" opacity="0.5"/>
+</svg>
