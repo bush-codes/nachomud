@@ -23,7 +23,7 @@ from nachomud.world.routines import hour_from_minute, npcs_in_room
 log = logging.getLogger("nachomud.agentrunner")
 
 
-from nachomud.settings import AGENT_TICK_SECONDS  # noqa: E402  re-export for back-compat
+from nachomud.settings import AGENT_LLM_TIMEOUT_SECONDS, AGENT_TICK_SECONDS  # noqa: E402
 DEAD_TICK_SECONDS = 4.0
 
 
@@ -162,7 +162,17 @@ async def _tick_once(world_loop, actor: Actor, llm_fn: LLMFn) -> None:
     system_prompt = (actor.agent_def or {}).get("system_prompt", "")
 
     try:
-        reply = await asyncio.to_thread(llm_fn, system_prompt, user_prompt)
+        reply = await asyncio.wait_for(
+            asyncio.to_thread(llm_fn, system_prompt, user_prompt),
+            timeout=AGENT_LLM_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        # The worker thread keeps running until llm_fn returns; we just
+        # stop waiting on it so the agent loop can tick again. Skipping
+        # the command is preferable to parking the loop forever.
+        log.warning("LLM call timed out after %.0fs for %s — skipping tick",
+                    AGENT_LLM_TIMEOUT_SECONDS, actor.actor_id)
+        return
     except Exception:
         log.exception("LLM call failed for %s — skipping tick", actor.actor_id)
         return

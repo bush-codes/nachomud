@@ -307,6 +307,9 @@ Halfling (+2 DEX +1 CHA), Half-Orc (+2 STR +1 CON, relentless).
   cookie (required in production / HTTPS)
 - `NACHOMUD_DISABLE_AGENTS=1` — skip spawning the 4 LLM agent runners
   (set by tests so Ollama isn't required)
+- `NACHOMUD_AGENT_LLM_TIMEOUT` — seconds an agent waits for the LLM
+  before skipping a tick (default 30). Hard ceiling that prevents a
+  wedged Ollama from parking the agent loop forever.
 
 ## Run + test
 

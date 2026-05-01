@@ -40,3 +40,10 @@ STARTING_GOLD = 25
 # Lightsail you'll want 30-60s to keep up; with GPU inference 5-10s
 # is fine.
 AGENT_TICK_SECONDS = float(os.environ.get("NACHOMUD_AGENT_TICK_SECONDS", "8"))
+
+# Hard ceiling on how long an agent waits for the LLM before skipping a
+# tick. Without this, a wedged Ollama (memory pressure, model swap,
+# network blip) parks the agent's asyncio task forever.
+AGENT_LLM_TIMEOUT_SECONDS = float(
+    os.environ.get("NACHOMUD_AGENT_LLM_TIMEOUT", "30")
+)
