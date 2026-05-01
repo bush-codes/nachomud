@@ -51,7 +51,7 @@ TAGLINES = [
 def _render_banner() -> str:
     out = [""]
     for line in LOGO_LINES:
-        out.append(_c(line, BOLD + MAGENTA))
+        out.append(_c(line, BOLD + CYAN))
     out.append("")
     tagline = random.choice(TAGLINES)
     # Center the tagline under the logo (logo is ~73 chars wide)
