@@ -25,6 +25,23 @@
         }
       }
     },
+    "/map": {
+      "get": {
+        "summary": "World Map",
+        "description": "Public global map view: union of every actor's explored rooms,\nrendered as a text list with exits. The sidebar Map button calls\nthis so anonymous spectators get a useful view too. Per-actor map\n(with fog-of-war) is the in-terminal `map` command.",
+        "operationId": "world_map_map_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/request": {
       "post": {
         "summary": "Auth Request",

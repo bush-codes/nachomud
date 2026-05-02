@@ -330,6 +330,7 @@ class Game:
         return {
             "look": self._cmd_look,
             "l":    self._cmd_look,
+            "map":  self._cmd_map,
             "exits": self._cmd_exits,
             "inventory": self._cmd_inventory,
             "inv": self._cmd_inventory,
@@ -458,6 +459,16 @@ class Game:
             self._make_prompt(),
         ])
         return msgs
+
+    def _cmd_map(self, _arg: str) -> list:
+        from nachomud.world.map import render_explored_text
+        self._advance("look")
+        text = render_explored_text(
+            self.player.world_id,
+            list(self.player.visited_rooms or []),
+            current_room_id=self.player.room_id or "",
+        )
+        return [_output(text + "\r\n"), self._make_prompt()]
 
     def _cmd_inventory(self, arg: str) -> list:
         p = self.player

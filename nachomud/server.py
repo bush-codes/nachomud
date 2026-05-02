@@ -334,6 +334,26 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/map")
+def world_map() -> JSONResponse:
+    """Public global map view: union of every actor's explored rooms,
+    rendered as a text list with exits. The sidebar Map button calls
+    this so anonymous spectators get a useful view too. Per-actor map
+    (with fog-of-war) is the in-terminal `map` command."""
+    from nachomud.world.map import render_explored_text
+    loop: WorldLoop | None = getattr(app.state, "world_loop", None)
+    if loop is None:
+        return JSONResponse({"map": "(world not initialized)"})
+    visited: set[str] = set()
+    world_id = "default"
+    for actor in loop.actors.values():
+        visited.update(actor.state.visited_rooms or [])
+        if actor.state.world_id:
+            world_id = actor.state.world_id
+    text = render_explored_text(world_id, sorted(visited))
+    return JSONResponse({"map": text})
+
+
 # ── Auth routes ──
 
 def _looks_like_email(s: str) -> bool:

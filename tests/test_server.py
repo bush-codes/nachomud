@@ -111,6 +111,16 @@ def test_actors_endpoint_removed(client):
     assert client.get("/actors").status_code == 404
 
 
+def test_map_endpoint_returns_text(client):
+    """GET /map returns the global explored-rooms text. Public — used
+    by the sidebar Map button so anon spectators get a useful view."""
+    r = client.get("/map")
+    assert r.status_code == 200
+    body = r.json()
+    assert "map" in body
+    assert isinstance(body["map"], str)
+
+
 def test_openapi_off_in_prod_mode(monkeypatch):
     """Without NACHOMUD_DEV_DOCS, FastAPI's auto-docs must 404."""
     # The fixture client uses the module-level `app`, which captured the

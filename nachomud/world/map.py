@@ -1,14 +1,14 @@
-"""ASCII map rendering of the explored world.
+"""Map rendering of the explored world.
 
-`render_map(world_id, current_room_id, visited_rooms)` plots each
-visited room at its stored grid coordinates — no BFS placement, no
-collisions, no off-grid section. With the grid invariant enforced at
-generation time, two rooms can never share a cell.
+`render_explored_text(world_id, visited_rooms, current_room_id="")`
+returns a text listing of every visited room and its exits — used by
+the in-terminal `map` command and the global /map endpoint. Doesn't
+need 2D coordinates; just walks the world graph.
 
-The current room is marked `[*Name*]`; others appear as `[ Name ]`.
-Rooms on a different z-layer (stairs, ladders) are listed underneath
-the grid. Per-actor fog-of-war: only rooms in `visited_rooms` (plus
-their immediate neighbors via the world graph) are drawn.
+The (older) `render_map(...)` ASCII-grid renderer below is kept for
+backward compat but expects a `coords` field on Room that was never
+implemented — it'll raise AttributeError if called. Use
+`render_explored_text` instead.
 """
 from __future__ import annotations
 
@@ -16,6 +16,48 @@ import nachomud.world.store as world_store
 
 
 _MIN_NAME_W = 6
+
+
+def render_explored_text(world_id: str, visited_rooms: list[str],
+                         *, current_room_id: str = "") -> str:
+    """Text listing of explored rooms with their exits. Per-actor
+    fog-of-war via `visited_rooms` — only rooms the caller has actually
+    visited get named; destinations not yet visited appear as '?'."""
+    visited: set[str] = set(visited_rooms or [])
+    if current_room_id:
+        visited.add(current_room_id)
+    if not visited:
+        return "(nothing explored yet)"
+
+    graph = world_store.load_graph(world_id)
+    rooms: list[tuple[str, str]] = []  # (room_id, name)
+    for rid in sorted(visited):
+        if not world_store.room_exists(world_id, rid):
+            continue
+        try:
+            r = world_store.load_room(world_id, rid)
+        except Exception:
+            continue
+        rooms.append((rid, r.name or rid))
+
+    if not rooms:
+        return "(nothing explored yet)"
+
+    name_by_id = dict(rooms)
+    lines: list[str] = [f"EXPLORED LOCATIONS ({len(rooms)} room"
+                        f"{'s' if len(rooms) != 1 else ''})", ""]
+    for rid, name in rooms:
+        marker = "* " if rid == current_room_id else "  "
+        lines.append(f"{marker}{name}")
+        for direction in sorted(graph.get(rid, {})):
+            dest = graph[rid][direction]
+            if isinstance(dest, str) and dest in name_by_id:
+                dest_name = name_by_id[dest]
+            else:
+                dest_name = "?"
+            lines.append(f"      {direction:>5} → {dest_name}")
+        lines.append("")
+    return "\n".join(lines)
 
 
 def render_map(world_id: str, current_room_id: str,

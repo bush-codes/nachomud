@@ -318,7 +318,39 @@
       sidebar.appendChild(row);
     }
 
+    // Map row — shows the global atlas (union of every actor's
+    // explored rooms) in the xterm pane. Public, no auth needed —
+    // works for anon spectators too. Click again to refresh.
+    const mapRow = document.createElement('button');
+    mapRow.className = 'actor map';
+    if (activeActorId === '_map') mapRow.classList.add('active');
+    mapRow.innerHTML = `
+      <div class="display">Map</div>
+      <div class="name">World atlas</div>
+      <div class="meta">where the agents have been</div>
+    `;
+    mapRow.addEventListener('click', showMap);
+    sidebar.appendChild(mapRow);
+
     for (const aid of Object.keys(actorStatus)) paintStats(aid);
+  }
+
+  async function showMap() {
+    activeActorId = '_map';
+    renderSidebar();
+    showXterm();
+    term.clear();
+    term.writeln('\x1b[36mFetching world map…\x1b[0m');
+    try {
+      const r = await fetch('/map', { credentials: 'same-origin' });
+      const data = await r.json();
+      term.clear();
+      term.write((data.map || '(empty)').replace(/\n/g, '\r\n'));
+      term.writeln('');
+      term.writeln('\x1b[2m(click an agent or your character to switch back)\x1b[0m');
+    } catch (e) {
+      term.writeln('\x1b[31mFailed to load map: ' + e + '\x1b[0m');
+    }
   }
 
   function paintStats(actorId) {
