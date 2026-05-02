@@ -67,7 +67,13 @@ NPCs follow daily routines. The DM is always reachable via `dm <msg>`,
 and free-form actions get adjudicated with skill checks against your
 real stats.
 
-Local-only by default — runs entirely on Ollama, no API keys.
+Local LLMs only, no API keys. The 4 agent personalities call the
+operator-controlled Ollama; each player's DM and NPC dialogue calls
+hit *that player's* GPU box, reached over Tailscale (each player runs
+Ollama and shares the node into the operator's tailnet — see the
+character-creation flow). When a player's GPU is unreachable, the DM
+surfaces an in-world "world feels still" message and the operator
+sees a log line.
 
 ## Repo layout
 
@@ -88,11 +94,12 @@ nachomud/                 # the package
 │   └── session.py        # per-WS session: welcome → char_create → game
 ├── characters/           # everything about player characters
 │   ├── character.py      # AgentState builder from class/race/stats
-│   ├── creation.py       # character-creation state machine
+│   ├── creation.py       # character-creation state machine (incl. dm_url)
 │   ├── leveling.py       # level-up + ability unlocks
 │   ├── effects.py        # StatusEffect system
 │   ├── save.py           # player save/load (JSON, atomic write)
-│   └── migrations.py     # schema migration framework
+│   ├── migrations.py     # schema migration framework
+│   └── player_migrations.py  # registered player schema migrations
 ├── combat/
 │   ├── encounter.py      # turn-based encounter state machine
 │   └── abilities.py      # 24 resolvers + ABILITY_DEFINITIONS
@@ -169,10 +176,16 @@ the LLM with the personality system prompt → parse the reply into a
 single command → submit through `WorldLoop.submit_command` (echoing
 the command line so spectators see what the agent decided).
 
-Pacing: `AGENT_TICK_SECONDS = 8.0` per agent, staggered. LLM calls
-happen *outside* the world lock so a slow LLM doesn't block other
-actors. Dead actors skip ticks. LLM exceptions are logged and
-swallowed.
+Pacing: `AGENT_TICK_SECONDS = 8.0` per agent, staggered. The agent's
+"decide my next command" LLM call happens *outside* the world lock so
+a slow LLM doesn't block other actors during the decision phase. The
+command's *execution* (in `submit_command`) is back inside the lock,
+so any LLM call inside a command (e.g. `dm.generate_room`) currently
+holds the lock for its duration. Agent personalities all use
+`AGENT_OLLAMA_URL` (operator-tier); only DM/NPC dialogue routes per
+actor.
+
+Dead actors skip ticks. LLM exceptions are logged and swallowed.
 
 Personalities load from `nachomud/ai/contexts/agent_*.md`:
 
@@ -233,12 +246,23 @@ go only to the producing connection.
 `ai/dm.py`. Three roles, one persistent context per player:
 
 1. **World generator** — `dm.generate_room()` runs when the player
-   crosses an unexplored exit. Emits JSON for the new room.
+   crosses an unexplored exit. Emits JSON for the new room. Idempotent
+   on `requested_id` so concurrent generations from two players just
+   land at the same room.
 2. **Conversation** — `dm.respond()` for chat (`dm <message>`),
    `dm.adjudicate()` for free-form actions (returns JSON: narration,
    optional skill check, optional state-changing actions, optional
    hint).
 3. **Interjections** — invoked at level-up etc.
+
+**Per-actor host**: each `DM` instance is bound to one Ollama URL via
+`DM(host=...)`. `WorldLoop._build_actor` sets `host=state.dm_ollama_url`
+for human actors and `host=None` (→ AGENT_OLLAMA_URL) for the 4 built-in
+agents. When a player's host is empty/unreachable, every DM call raises
+`LLMUnavailable`; `respond`/`adjudicate` catch it and return the
+in-world fallback ("the world feels still"). NPC dialogue uses the same
+host-routing rule (`NPCDialogue(host=...)`) since it's the same model
+tier as the DM.
 
 **Pending hints**: when the DM mentions a forward-looking world fact,
 it can flag with `HINT: <text>`. Persisted to
