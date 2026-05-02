@@ -23,7 +23,11 @@ from nachomud.world.routines import hour_from_minute, npcs_in_room
 log = logging.getLogger("nachomud.agentrunner")
 
 
-from nachomud.settings import AGENT_LLM_TIMEOUT_SECONDS, AGENT_TICK_SECONDS  # noqa: E402
+from nachomud.settings import (  # noqa: E402
+    ACTION_HISTORY_SIZE,
+    AGENT_LLM_TIMEOUT_SECONDS,
+    AGENT_TICK_SECONDS,
+)
 DEAD_TICK_SECONDS = 4.0
 
 
@@ -127,6 +131,15 @@ def _build_explore_prompt(snap: dict) -> str:
         parts.append("")
         parts.append("Your recent actions: "
                      + " | ".join(state.action_history[-5:]))
+        # Anti-repetition nudge: when the last 3+ actions all start with
+        # the same verb, the agent is in a rut (e.g. "talk talk talk").
+        # Tell it explicitly to vary. Combat is exempt (handled by the
+        # combat prompt) since repeating attacks is correct there.
+        recent_verbs = [a.split()[0].lower() for a in state.action_history[-3:] if a]
+        if len(recent_verbs) >= 3 and len(set(recent_verbs)) == 1:
+            parts.append(f"You've issued '{recent_verbs[0]}' three times in a row. "
+                         "Pick a different kind of command this time — explore, "
+                         "fight, examine an item, ask the DM something new.")
 
     parts.append("")
     parts.append("Pick exactly one command. Movement: n/s/e/w/up/down. "
@@ -213,6 +226,13 @@ async def _tick_once(world_loop, actor: Actor, llm_fn: LLMFn) -> None:
     if snap.get("in_combat"):
         command = _coerce_combat_command(command, actor, snap)
     log.info("agent %s -> %s", actor.actor_id, command)
+    # Record so the next tick's prompt has self-context. Even
+    # rejected commands are recorded — that's exactly what the
+    # anti-repetition nudge in the prompt builder needs to spot.
+    hist = actor.state.action_history
+    hist.append(command)
+    if len(hist) > ACTION_HISTORY_SIZE:
+        del hist[:-ACTION_HISTORY_SIZE]
     await asyncio.to_thread(_submit_with_echo, world_loop, actor.actor_id, command)
 
 
