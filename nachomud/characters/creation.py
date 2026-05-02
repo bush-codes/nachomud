@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
+from urllib.parse import urlparse
 
 from nachomud.characters.character import (
     create_character,
@@ -42,7 +43,7 @@ from nachomud.style import BOLD, CYAN, DIM, GREEN, MAGENTA, RED, RESET, YELLOW, 
 
 # ── State machine ──
 
-STATES = ("name", "race", "class", "point_buy", "confirm", "done")
+STATES = ("name", "race", "class", "point_buy", "dm_url", "confirm", "done")
 
 
 @dataclass
@@ -57,6 +58,7 @@ class CharCreator:
     class_name: str = ""
     stats: Stats = field(default_factory=Stats)
     current_stat_idx: int = 0  # which stat we're filling in point_buy mode
+    dm_ollama_url: str = ""    # per-character DM-tier Ollama (tailnet URL)
 
     def is_complete(self) -> bool:
         return self.state == "done"
@@ -84,6 +86,7 @@ class CharCreator:
             self.class_name = ""
             self.stats = Stats()
             self.current_stat_idx = 0
+            self.dm_ollama_url = ""
             return [("output", _c("Restarting character creation.\r\n", YELLOW)), *self._prompt_for_state()]
 
         try:
@@ -134,7 +137,7 @@ class CharCreator:
             for stat, v in zip(order_pref, values, strict=False):
                 self.stats.set(stat, v)
             self.current_stat_idx = len(STAT_NAMES)
-            self.state = "confirm"
+            self.state = "dm_url"
             return [("output", _c("Standard array assigned (primary stat first).\r\n", GREEN)), *self._prompt_for_state()]
 
         if self.current_stat_idx >= len(STAT_NAMES):
@@ -162,8 +165,17 @@ class CharCreator:
 
         self.current_stat_idx += 1
         if self.current_stat_idx >= len(STAT_NAMES):
-            self.state = "confirm"
+            self.state = "dm_url"
         return self._prompt_for_state()
+
+    def _handle_dm_url(self, text: str) -> list[tuple[str, str]]:
+        err = _validate_dm_ollama_url(text)
+        if err is not None:
+            return [("output", _c(err + "\r\n", RED)), *self._prompt_for_state()]
+        self.dm_ollama_url = text.strip()
+        self.state = "confirm"
+        return [("output", _c(f"DM Ollama set to {self.dm_ollama_url}.\r\n\r\n", GREEN)),
+                *self._prompt_for_state()]
 
     def _handle_confirm(self, text: str) -> list[tuple[str, str]]:
         t = text.lower()
@@ -177,6 +189,7 @@ class CharCreator:
             self.class_name = ""
             self.stats = Stats()
             self.current_stat_idx = 0
+            self.dm_ollama_url = ""
             return [("output", _c("Starting over.\r\n\r\n", YELLOW)), *self._prompt_for_state()]
         return [("output", _c("Type y to confirm, n to start over, or 'restart' anytime.\r\n", RED)), *self._prompt_for_state()]
 
@@ -216,6 +229,22 @@ class CharCreator:
             lines.append(f"Set {_c(stat, BOLD)} (8-15): ")
             return [("output", "\r\n".join(lines)),
                     ("prompt", _c(f"{stat}> ", CYAN))]
+        if self.state == "dm_url":
+            lines = [
+                _c("=== DM Ollama URL ===", BOLD + CYAN),
+                "",
+                "Each character runs the Dungeon Master on their own GPU,",
+                "reachable over Tailscale. On your machine:",
+                "  1) Install Tailscale and share your node into the operator's tailnet",
+                "  2) Run Ollama with " + _c("OLLAMA_HOST=0.0.0.0", BOLD)
+                + " bound (so the tailnet can reach it)",
+                "  3) Pull the smart-tier model: " + _c("ollama pull llama3.1:8b-instruct-q4_K_M", BOLD),
+                "  4) Find your tailnet IP with " + _c("tailscale ip -4", BOLD),
+                "",
+                _c("Paste the full URL (e.g. http://100.64.1.5:11434):", DIM),
+            ]
+            return [("output", "\r\n".join(lines) + "\r\n"),
+                    ("prompt", _c("dm-url> ", CYAN))]
         if self.state == "confirm":
             preview = self._build_preview_agent()
             cdef = CLASS_DEFINITIONS[self.class_name]
@@ -246,6 +275,7 @@ class CharCreator:
                 f"  Resource: {(preview.max_ap and f'AP {preview.ap}/{preview.max_ap}') or f'MP {preview.mp}/{preview.max_mp}'}",
                 f"  Abilities: {', '.join(preview.abilities)}",
                 f"  Saves proficient in: {', '.join(preview.save_proficiencies)}",
+                f"  DM Ollama: {self.dm_ollama_url}",
                 "",
                 "Confirm? (y/n)",
             ])
@@ -305,4 +335,26 @@ class CharCreator:
             world_id=self.default_world_id,
         )
         a.room_id = self.spawn_room
+        a.dm_ollama_url = self.dm_ollama_url
         return a
+
+
+# ── Validation helpers ──
+
+def _validate_dm_ollama_url(text: str) -> str | None:
+    """Return error message or None if URL is acceptable. Required:
+    http(s) scheme, hostname present. Port is recommended but not
+    required (caller will discover the wrong port the first time the
+    DM tries to talk and the player will get the in-world fallback)."""
+    raw = text.strip()
+    if not raw:
+        return "URL can't be empty. Paste a tailnet URL like http://100.64.1.5:11434."
+    try:
+        parsed = urlparse(raw)
+    except ValueError:
+        return "Couldn't parse that URL. Try http://100.64.1.5:11434."
+    if parsed.scheme not in ("http", "https"):
+        return "URL must start with http:// or https://"
+    if not parsed.hostname:
+        return "URL is missing a host. Try http://100.64.1.5:11434."
+    return None

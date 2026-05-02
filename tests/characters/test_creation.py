@@ -7,6 +7,11 @@ from nachomud.characters.creation import CharCreator
 from nachomud.rules.stats import POINT_BUY_BUDGET
 
 
+# A made-up Tailscale URL used by happy-path tests that just need to
+# clear the dm_url state. None of these tests actually contact Ollama.
+_FAKE_DM_URL = "http://100.64.1.5:11434"
+
+
 def _drive(cc: CharCreator, *inputs: str) -> CharCreator:
     cc.start()
     for inp in inputs:
@@ -34,6 +39,9 @@ def test_full_flow_dwarf_warrior_standard():
     assert cc.class_name == "Warrior"
 
     cc.handle_input("standard")
+    assert cc.state == "dm_url"
+
+    cc.handle_input(_FAKE_DM_URL)
     assert cc.state == "confirm"
 
     cc.handle_input("y")
@@ -49,6 +57,7 @@ def test_full_flow_dwarf_warrior_standard():
     # HP = d10 + CON mod (15 → +2) = 12
     assert a.max_hp == 12
     assert a.ac == 18  # 16 base + min(DEX 14 mod +2, max 2) = 18
+    assert a.dm_ollama_url == _FAKE_DM_URL
 
 
 def test_full_flow_custom_point_buy():
@@ -61,6 +70,8 @@ def test_full_flow_custom_point_buy():
     # Costs: 0+7+4+9+5+2 = 27
     for v in (8, 14, 12, 15, 13, 10):
         cc.handle_input(str(v))
+    assert cc.state == "dm_url"
+    cc.handle_input(_FAKE_DM_URL)
     assert cc.state == "confirm"
     cc.handle_input("y")
     a = cc.build_agent()
@@ -164,6 +175,8 @@ def test_confirm_no_restarts():
     cc.handle_input("Human")
     cc.handle_input("Warrior")
     cc.handle_input("standard")
+    assert cc.state == "dm_url"
+    cc.handle_input(_FAKE_DM_URL)
     assert cc.state == "confirm"
     cc.handle_input("n")
     assert cc.state == "name"
@@ -185,6 +198,7 @@ def test_standard_array_assigns_primary_first():
     cc.handle_input("Human")
     cc.handle_input("Mage")
     cc.handle_input("standard")
+    cc.handle_input(_FAKE_DM_URL)
     cc.handle_input("y")
     a = cc.build_agent()
     # INT should be 15 (pre-racial); +1 Human = 16
@@ -199,6 +213,7 @@ def test_standard_array_for_rogue_uses_dex():
     cc.handle_input("Halfling")
     cc.handle_input("Rogue")
     cc.handle_input("standard")
+    cc.handle_input(_FAKE_DM_URL)
     cc.handle_input("y")
     a = cc.build_agent()
     # Rogue primary DEX, gets 15. Halfling +2 DEX = 17.
@@ -214,6 +229,7 @@ def test_built_agent_has_starting_abilities():
     cc.handle_input("Human")
     cc.handle_input("Warrior")
     cc.handle_input("standard")
+    cc.handle_input(_FAKE_DM_URL)
     cc.handle_input("y")
     a = cc.build_agent()
     assert "attack" in a.abilities
@@ -227,6 +243,7 @@ def test_built_agent_at_spawn_room():
     cc.handle_input("Human")
     cc.handle_input("Warrior")
     cc.handle_input("standard")
+    cc.handle_input(_FAKE_DM_URL)
     cc.handle_input("y")
     a = cc.build_agent()
     assert a.room_id == "silverbrook.inn"
@@ -240,6 +257,75 @@ def test_built_agent_has_world_id():
     cc.handle_input("Human")
     cc.handle_input("Warrior")
     cc.handle_input("standard")
+    cc.handle_input(_FAKE_DM_URL)
     cc.handle_input("y")
     a = cc.build_agent()
     assert a.world_id == "custom_world"
+
+
+# ── DM Ollama URL ──
+
+def _drive_to_dm_url(cc: CharCreator) -> CharCreator:
+    cc.start()
+    cc.handle_input("Aric")
+    cc.handle_input("Human")
+    cc.handle_input("Warrior")
+    cc.handle_input("standard")
+    return cc
+
+
+def test_dm_url_state_appears_after_point_buy():
+    cc = _drive_to_dm_url(CharCreator())
+    assert cc.state == "dm_url"
+
+
+def test_dm_url_empty_rejected():
+    cc = _drive_to_dm_url(CharCreator())
+    cc.handle_input("")
+    assert cc.state == "dm_url"
+    assert cc.dm_ollama_url == ""
+
+
+def test_dm_url_no_scheme_rejected():
+    cc = _drive_to_dm_url(CharCreator())
+    cc.handle_input("100.64.1.5:11434")  # missing http://
+    assert cc.state == "dm_url"
+
+
+def test_dm_url_bare_word_rejected():
+    cc = _drive_to_dm_url(CharCreator())
+    cc.handle_input("hello")
+    assert cc.state == "dm_url"
+
+
+def test_dm_url_https_accepted():
+    cc = _drive_to_dm_url(CharCreator())
+    cc.handle_input("https://my-tailnet.example:11434")
+    assert cc.state == "confirm"
+    assert cc.dm_ollama_url == "https://my-tailnet.example:11434"
+
+
+def test_dm_url_persists_through_to_built_agent():
+    cc = _drive_to_dm_url(CharCreator())
+    cc.handle_input(_FAKE_DM_URL)
+    cc.handle_input("y")
+    a = cc.build_agent()
+    assert a.dm_ollama_url == _FAKE_DM_URL
+
+
+def test_restart_clears_dm_url():
+    cc = _drive_to_dm_url(CharCreator())
+    cc.handle_input(_FAKE_DM_URL)
+    assert cc.dm_ollama_url == _FAKE_DM_URL
+    cc.handle_input("restart")
+    assert cc.state == "name"
+    assert cc.dm_ollama_url == ""
+
+
+def test_confirm_no_clears_dm_url():
+    cc = _drive_to_dm_url(CharCreator())
+    cc.handle_input(_FAKE_DM_URL)
+    assert cc.state == "confirm"
+    cc.handle_input("n")
+    assert cc.state == "name"
+    assert cc.dm_ollama_url == ""
