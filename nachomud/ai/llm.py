@@ -33,16 +33,27 @@ def chat(*, system: str, message: str, model: str,
          host: str | None = None, max_tokens: int = 200) -> str:
     """Send a chat completion to Ollama and return the text response.
 
-    `host` defaults to AGENT_OLLAMA_URL (the operator's tailnet-shared
-    Ollama). The DM tier passes the player's per-actor URL to route the
-    expensive smart-model call to that player's GPU.
+    Host resolution:
+      * `host=None` → use AGENT_OLLAMA_URL (operator-tier traffic).
+      * `host="<url>"` → use that URL (per-actor DM-tier traffic).
+      * `host=""` → raise LLMUnavailable immediately. This is the
+        "this human player never set their dm_ollama_url" path; we
+        deliberately don't fall back to the operator host because the
+        whole point of per-player routing is that DM compute is BYO.
+        The DM persona surfaces the player-facing in-world message.
 
     Raises LLMUnavailable if the backend can't be reached (host down,
-    socket timeout, refused connection). Each player's box can be
-    stopped independently of the app box — this is the wire we hit
-    when one of those GPUs is off."""
+    socket timeout, refused connection)."""
     import httpx
-    target = host or AGENT_OLLAMA_URL
+    if host is None:
+        target = AGENT_OLLAMA_URL
+    elif host == "":
+        raise LLMUnavailable(
+            "no DM Ollama URL configured for this actor — set one "
+            "during character creation"
+        )
+    else:
+        target = host
     # keep_alive="24h" pins the model in RAM across requests. Without
     # this the Python ollama client sends a short default and Ollama
     # unloads after a few minutes — meaning every other call pays a

@@ -42,12 +42,15 @@ LLMFn = Callable[[str, str], str]
 """Type: (system_prompt, user_prompt) -> assistant_reply"""
 
 
-def _default_llm() -> LLMFn:
-    """Default LLM caller: Ollama via the existing llm.chat helper."""
+def _default_llm(host: str | None = None) -> LLMFn:
+    """Default LLM caller: Ollama via the existing llm.chat helper.
+    `host` overrides AGENT_OLLAMA_URL — passed by WorldLoop so each
+    player's DM call hits their own tailnet-shared Ollama."""
     def _call(system: str, user: str) -> str:
         # Lazy import so test environments without ollama installed still load this module
         from nachomud.ai.llm import chat
-        return chat(system=system, message=user, model=LLM_SMART_MODEL, max_tokens=400)
+        return chat(system=system, message=user, model=LLM_SMART_MODEL,
+                    host=host, max_tokens=400)
     return _call
 
 
@@ -138,11 +141,12 @@ def _presence_summary(player: AgentState, room: Room) -> list[str]:
 @dataclass
 class DM:
     llm: LLMFn | None = None
+    host: str | None = None
     world_gen: WorldGen | None = None
 
     def __post_init__(self):
         if self.llm is None:
-            self.llm = _default_llm()
+            self.llm = _default_llm(host=self.host)
         if self.world_gen is None:
             self.world_gen = WorldGen(llm=self.llm)
 
@@ -159,9 +163,12 @@ class DM:
             prompt = _build_user_prompt(player, room, message)
             try:
                 reply = self.llm(DM_PERSONA, prompt).strip()
-            except LLMUnavailable:
+            except LLMUnavailable as e:
                 # Don't pollute dm_context with the failure — let the
-                # player retry once the LLM is back.
+                # player retry once the LLM is back. Log so the operator
+                # can see *which* player's GPU is down.
+                log.warning("DM.respond unavailable for %s: %s",
+                            player.player_id, e)
                 return "(The DM is silent for the moment — the world feels still.)"
             except Exception as e:
                 log.exception("DM.respond LLM call failed")
@@ -194,7 +201,9 @@ class DM:
             try:
                 raw = self.llm(ADJUDICATE_PERSONA, prompt)
                 payload = _extract_json(raw)
-            except LLMUnavailable:
+            except LLMUnavailable as e:
+                log.warning("DM.adjudicate unavailable for %s: %s",
+                            player.player_id, e)
                 payload = {"narrate": "You attempt the action, but the world feels paused — try again in a moment.",
                            "skill_check": None, "hint": None, "actions": None}
             except Exception:

@@ -72,3 +72,33 @@ def test_world_gen_room_propagates_unavailable_instead_of_stubbing(tmp_path,
                exits={"n": "wild.foo"}, zone_tag="silverbrook")
     with pytest.raises(LLMUnavailable):
         wg.generate_room(src, "n", "default", requested_id="wild.foo")
+
+
+def test_chat_empty_host_raises_unavailable():
+    """A human player who never set their dm_ollama_url ends up with
+    chat(host="") — that's the "BYO-GPU not configured" case. We refuse
+    rather than silently fall back to the operator's GPU; otherwise the
+    whole point of per-player routing collapses."""
+    from nachomud.ai.llm import chat
+    with pytest.raises(LLMUnavailable):
+        chat(system="x", message="y", model="z", host="")
+
+
+def test_chat_none_host_uses_default():
+    """host=None means 'use AGENT_OLLAMA_URL' — that's the operator-
+    tier default. We don't actually want to make a network call here,
+    so we just verify the empty-string path is the only one that
+    raises immediately."""
+    from nachomud.ai.llm import chat
+    # Patching out the underlying client would be more hermetic, but
+    # the contract under test is just "host=None doesn't raise the
+    # config-error variant of LLMUnavailable" — any other LLMUnavailable
+    # (network down) is fine for this assertion.
+    try:
+        chat(system="x", message="y", model="nonexistent-model", host=None)
+    except LLMUnavailable as e:
+        assert "no DM Ollama URL configured" not in str(e)
+    except Exception:
+        # Network/model errors are fine — we're only verifying the
+        # config-error branch isn't taken.
+        pass

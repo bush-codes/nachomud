@@ -10,28 +10,40 @@ LLM and summary callers are dependency-injected so tests can stub them.
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from collections.abc import Callable
 
 from nachomud.ai.contexts import load as load_context
+from nachomud.ai.llm import LLMUnavailable
 from nachomud.settings import LLM_SMART_MODEL, LLM_SUMMARY_MODEL, LORE_HISTORY_SIZE
 from nachomud.models import AgentState, NPC
+
+
+log = logging.getLogger("nachomud.npc")
 
 LLMFn = Callable[[str, str], str]
 """(system_prompt, user_prompt) -> reply"""
 
 
-def _default_llm() -> LLMFn:
+def _default_llm(host: str | None = None) -> LLMFn:
+    """Smart-model NPC dialogue. `host` matches the actor's DM host
+    (player's tailnet Ollama for humans, operator for agents) — NPC
+    dialogue is the same tier as the DM, so it routes the same place."""
     def _call(system: str, user: str) -> str:
         from nachomud.ai.llm import chat
-        return chat(system=system, message=user, model=LLM_SMART_MODEL, max_tokens=300)
+        return chat(system=system, message=user, model=LLM_SMART_MODEL,
+                    host=host, max_tokens=300)
     return _call
 
 
-def _default_summary() -> LLMFn:
+def _default_summary(host: str | None = None) -> LLMFn:
+    """Summary tier — fast model. Routes to the same host as the dialogue
+    call so an off-GPU player doesn't have one of two NPC calls succeed."""
     def _call(system: str, user: str) -> str:
         from nachomud.ai.llm import chat
-        return chat(system=system, message=user, model=LLM_SUMMARY_MODEL, max_tokens=120)
+        return chat(system=system, message=user, model=LLM_SUMMARY_MODEL,
+                    host=host, max_tokens=120)
     return _call
 
 
@@ -135,12 +147,13 @@ def build_summary_user_prompt(npc_name: str, dialogue: str) -> str:
 class NPCDialogue:
     llm: LLMFn | None = None
     summarizer: LLMFn | None = None
+    host: str | None = None
 
     def __post_init__(self):
         if self.llm is None:
-            self.llm = _default_llm()
+            self.llm = _default_llm(host=self.host)
         if self.summarizer is None:
-            self.summarizer = _default_summary()
+            self.summarizer = _default_summary(host=self.host)
 
     def speak(self, player: AgentState, npc: NPC, activity: str, message: str) -> tuple[str, str]:
         """Get the NPC's reply and a 1-2 sentence summary. Both are returned;
@@ -158,9 +171,13 @@ class NPCDialogue:
         user = build_npc_user_prompt(npc, player, message)
         try:
             reply = self.llm(system, user).strip()
+        except LLMUnavailable as e:
+            log.warning("NPC.speak unavailable for %s talking to %s: %s",
+                        player.player_id, npc.name, e)
+            return f"({npc.name} doesn't seem to hear you.)", ""
         except Exception:
-            reply = f"({npc.name} doesn't seem to hear you.)"
-            return reply, ""
+            log.exception("NPC.speak LLM call failed")
+            return f"({npc.name} doesn't seem to hear you.)", ""
 
         # Summary (best-effort; skip if it fails)
         try:

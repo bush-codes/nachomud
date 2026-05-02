@@ -178,10 +178,20 @@ class WorldLoop:
 
     def _build_actor(self, actor_id: str, kind: str, state: AgentState,
                      definition: dict | None) -> Actor:
+        # Smart-tier host (DM + NPC dialogue) routes per actor:
+        #   agents → operator's AGENT_OLLAMA_URL (host=None falls through)
+        #   humans → state.dm_ollama_url (set during char creation;
+        #     empty string here makes chat() raise LLMUnavailable, which
+        #     surfaces "the world feels still" to the player)
+        # Tests inject self.dm_llm / self.npc_llm directly and bypass
+        # the host plumbing entirely.
+        smart_host = state.dm_ollama_url if kind == "human" else None
         game = Game(
             player=state,
-            dm=DM(llm=self.dm_llm),
-            npc_dialogue=NPCDialogue(llm=self.npc_llm, summarizer=self.npc_summarizer),
+            dm=DM(llm=self.dm_llm, host=smart_host),
+            npc_dialogue=NPCDialogue(llm=self.npc_llm,
+                                     summarizer=self.npc_summarizer,
+                                     host=smart_host),
             co_residents_fn=lambda room_id, _aid=actor_id: self._co_residents(_aid, room_id),
         )
         return Actor(actor_id=actor_id, kind=kind, state=state, game=game,
@@ -211,11 +221,15 @@ class WorldLoop:
             existing = self.actors.get(actor_id)
             if existing is not None:
                 existing.state = state
+                # Same routing rule as _build_actor — re-binding for
+                # reconnect picks up the latest dm_ollama_url too.
+                smart_host = state.dm_ollama_url
                 existing.game = Game(
                     player=state,
-                    dm=DM(llm=self.dm_llm),
+                    dm=DM(llm=self.dm_llm, host=smart_host),
                     npc_dialogue=NPCDialogue(llm=self.npc_llm,
-                                             summarizer=self.npc_summarizer),
+                                             summarizer=self.npc_summarizer,
+                                             host=smart_host),
                     co_residents_fn=lambda room_id, _aid=actor_id: self._co_residents(_aid, room_id),
                 )
                 actor = existing
