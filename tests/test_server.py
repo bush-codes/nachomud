@@ -111,6 +111,20 @@ def test_actors_endpoint_removed(client):
     assert client.get("/actors").status_code == 404
 
 
+def test_map_endpoint_returns_ascii(client):
+    """GET /map returns a JSON payload with an ASCII rendering of the
+    union of all actors' explored rooms. Anchored at silverbrook.inn
+    so the renderer always has a placeable current_room_id."""
+    r = client.get("/map")
+    assert r.status_code == 200
+    data = r.json()
+    assert "map" in data
+    # Anchor room name should appear when the world is seeded.
+    body = data["map"]
+    assert isinstance(body, str)
+    assert len(body) > 0
+
+
 def test_openapi_off_in_prod_mode(monkeypatch):
     """Without NACHOMUD_DEV_DOCS, FastAPI's auto-docs must 404."""
     # The fixture client uses the module-level `app`, which captured the

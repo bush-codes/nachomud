@@ -334,6 +334,28 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/map")
+def world_map() -> JSONResponse:
+    """Render the union of every actor's explored rooms as ASCII. Used by
+    the sidebar's "Map" view to show what the agents have collectively
+    discovered. Anchored at the spawn room (silverbrook.inn) so the
+    renderer always has a current_room_id it can place."""
+    import nachomud.world.map as world_map_mod
+    loop: WorldLoop | None = getattr(app.state, "world_loop", None)
+    if loop is None:
+        return JSONResponse({"map": "(world not initialized)"})
+    visited: set[str] = set()
+    world_id = "default"
+    for actor in loop.actors.values():
+        visited.update(actor.state.visited_rooms or [])
+        if actor.state.world_id:
+            world_id = actor.state.world_id
+    anchor = "silverbrook.inn"
+    visited.add(anchor)
+    ascii_map = world_map_mod.render_map(world_id, anchor, sorted(visited))
+    return JSONResponse({"map": ascii_map})
+
+
 # ── Auth routes ──
 
 def _looks_like_email(s: str) -> bool:

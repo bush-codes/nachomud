@@ -25,6 +25,23 @@
         }
       }
     },
+    "/map": {
+      "get": {
+        "summary": "World Map",
+        "description": "Render the union of every actor's explored rooms as ASCII. Used by\nthe sidebar's \"Map\" view to show what the agents have collectively\ndiscovered. Anchored at the spawn room (silverbrook.inn) so the\nrenderer always has a current_room_id it can place.",
+        "operationId": "world_map_map_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/request": {
       "post": {
         "summary": "Auth Request",
