@@ -85,6 +85,15 @@ class WorldGen:
                       max_retries: int = 2) -> Room:
         """Generate a new room and persist it across all three stores.
 
+        Idempotent on `requested_id`: if a room with that id already
+        exists (another actor raced ahead and created it on their own
+        GPU), skip the LLM round-trip and return the existing room.
+        This is belt-and-suspenders — the WorldLoop._lock currently
+        serializes _cmd_move so two concurrent generations of the
+        same requested_id can't actually happen. But the guard makes
+        the contract explicit and survives any future change that
+        releases the lock during LLM calls.
+
         Raises LLMUnavailable if the LLM is unreachable — the caller
         (move command) should refuse the move with a "path is shrouded"
         message rather than create a permanent stub-room that pollutes
@@ -92,10 +101,21 @@ class WorldGen:
         back to a stub after retries — that's a one-off content
         glitch, not a temporary infra outage."""
         new_id = requested_id or _allocate_room_id(source.zone_tag)
+
+        # Fast-path: another writer already created this room.
+        if world_store.room_exists(world_id, new_id):
+            return world_store.load_room(world_id, new_id)
+
         last_err: Exception | None = None
         for _attempt in range(max_retries + 1):
             try:
                 payload = self._call_room_gen(source, direction, new_id)
+                # Re-check post-LLM: if a concurrent writer landed
+                # while our LLM was thinking, drop our payload and
+                # adopt theirs. Avoids two players overwriting each
+                # other's room when both reach the same exit.
+                if world_store.room_exists(world_id, new_id):
+                    return world_store.load_room(world_id, new_id)
                 return self._materialize_room(source, direction, new_id, payload, world_id)
             except LLMUnavailable:
                 # Don't retry — the LLM is OFF, not flaky. Bubble up.
