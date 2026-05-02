@@ -29,6 +29,7 @@ from typing import Any, Optional
 import nachomud.characters.save as player_mod
 import nachomud.world.starter as starter
 import nachomud.world.store as world_store
+import nachomud.world.transcript_log as transcript_log
 from nachomud.ai.agents import AGENT_DEFINITIONS, build_agent_state
 from nachomud.ai.dm import DM, LLMFn
 from nachomud.ai.npc import NPCDialogue
@@ -78,10 +79,13 @@ class Actor:
     agent_def: dict | None = None
 
     def record(self, msgs: Iterable) -> None:
-        """Append messages to the per-actor transcript ring buffer.
-        Subscribers backfill from this when they switch views."""
+        """Append messages to the per-actor transcript ring buffer
+        AND the persistent disk log. Subscribers backfill from disk
+        (24h window) when they switch views — the in-memory ring is
+        only retained as a fast path for very-recent reads."""
         for m in msgs:
             self.transcript.append(m)
+            transcript_log.append(self.actor_id, m)
 
 
 @dataclass
@@ -281,8 +285,15 @@ class WorldLoop:
         self._enqueue(sub.queue, ("event",
                                   {"type": "subscribed", "actor_id": actor_id}))
         if actor_id:
-            actor = self.actors[actor_id]
-            for item in list(actor.transcript):
+            # Replay from the persistent disk log so spectators get
+            # 24h of history, not just whatever's accumulated since
+            # the container last started. Falls back to the in-memory
+            # ring if the log is unreadable.
+            history = transcript_log.read_recent(actor_id)
+            if not history:
+                actor = self.actors[actor_id]
+                history = list(actor.transcript)
+            for item in history:
                 self._enqueue(sub.queue, ("scoped", actor_id, item))
         else:
             for item in list(sub.self_transcript):

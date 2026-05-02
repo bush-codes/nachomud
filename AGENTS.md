@@ -294,7 +294,7 @@ Halfling (+2 DEX +1 CHA), Half-Orc (+2 STR +1 CON, relentless).
 - `LLM_FAST_MODEL` — agent runner (default `llama3.2:3b`)
 - `OLLAMA_BASE_URL` — default `http://localhost:11434`
 - `NACHOMUD_DATA_ROOT` / `NACHOMUD_PLAYERS_ROOT` / `NACHOMUD_ACCOUNTS_ROOT`
-  — override save dirs (used by tests)
+  / `NACHOMUD_TRANSCRIPT_ROOT` — override save dirs (used by tests)
 - `NACHOMUD_SECRET_KEY` — signing key for session cookies; **must be
   set in production** (random 32+ bytes). In dev a fresh ephemeral key
   is generated each restart.
