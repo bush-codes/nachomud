@@ -10,9 +10,16 @@ import os
 
 
 # ── LLM backend ──
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-LLM_BACKEND = os.environ.get("LLM_BACKEND", "ollama")
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+# All LLM calls go to Ollama. Two host pools:
+#   AGENT_OLLAMA_URL — operator-controlled box used by the 4 built-in
+#     agent personalities AND any other LLM call without a per-actor
+#     host (npc fallback, etc.).
+#   per-character `dm_ollama_url` (on AgentState) — each player BYO-GPUs
+#     the DM-tier model via Tailscale node sharing. Resolved at call time
+#     by the WorldLoop wiring.
+AGENT_OLLAMA_URL = os.environ.get(
+    "NACHOMUD_AGENT_OLLAMA_URL", "http://localhost:11434"
+)
 
 # Player-mode model split. All Llama, no Qwen.
 LLM_SMART_MODEL = os.environ.get("LLM_SMART_MODEL", "llama3.1:8b-instruct-q4_K_M")

@@ -97,7 +97,7 @@ nachomud/                 # the package
 │   ├── encounter.py      # turn-based encounter state machine
 │   └── abilities.py      # 24 resolvers + ABILITY_DEFINITIONS
 ├── ai/
-│   ├── llm.py            # Ollama / Anthropic backend
+│   ├── llm.py            # Ollama client (per-host, cached)
 │   ├── dm.py             # DM: chat + adjudication
 │   ├── world_gen.py      # DM-driven procedural room generation
 │   ├── npc.py            # NPC dialogue + lore summarization
@@ -289,10 +289,13 @@ Halfling (+2 DEX +1 CHA), Half-Orc (+2 STR +1 CON, relentless).
 
 ## Environment vars
 
-- `LLM_BACKEND` — `ollama` (default) or `anthropic`
 - `LLM_SMART_MODEL` — DM, NPC dialogue (default `llama3.1:8b-instruct-q4_K_M`)
 - `LLM_FAST_MODEL` — agent runner (default `llama3.2:3b`)
-- `OLLAMA_BASE_URL` — default `http://localhost:11434`
+- `NACHOMUD_AGENT_OLLAMA_URL` — Ollama URL the operator-tier traffic
+  (4 agent personalities, NPC fallback) hits. Default
+  `http://localhost:11434`. In prod this is the operator's Tailscale-
+  shared Ollama. The DM tier uses the per-character `dm_ollama_url`
+  stored on the player's save (set during char creation).
 - `NACHOMUD_DATA_ROOT` / `NACHOMUD_PLAYERS_ROOT` / `NACHOMUD_ACCOUNTS_ROOT`
   / `NACHOMUD_TRANSCRIPT_ROOT` — override save dirs (used by tests)
 - `NACHOMUD_SECRET_KEY` — signing key for session cookies; **must be
