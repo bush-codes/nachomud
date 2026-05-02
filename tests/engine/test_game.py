@@ -66,6 +66,24 @@ def test_start_renders_room(game):
     assert "Exits" in text
 
 
+def test_render_includes_co_residents_when_callback_set(game):
+    """When WorldLoop wires a co_residents_fn, render_room should list
+    the other adventurers in the same room."""
+    game.co_residents_fn = lambda _room_id: ["Aelinor", "Pippin"]
+    msgs = game.start()
+    text = _text(msgs)
+    assert "Adventurers here:" in text
+    assert "Aelinor" in text
+    assert "Pippin" in text
+
+
+def test_render_omits_co_residents_section_when_no_callback(game):
+    """Standalone Game (no WorldLoop) shouldn't render an empty list."""
+    msgs = game.start()
+    text = _text(msgs)
+    assert "Adventurers here:" not in text
+
+
 def test_move_north_into_market(game):
     game.start()
     msgs = game.handle("n")

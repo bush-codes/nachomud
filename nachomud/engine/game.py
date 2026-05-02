@@ -195,7 +195,8 @@ def clock_str(p: AgentState) -> str:
 
 # ── Sensory rendering ──
 
-def render_room(p: AgentState, room: Room) -> str:
+def render_room(p: AgentState, room: Room,
+                *, co_residents: list[str] | None = None) -> str:
     hour = hour_from_minute(p.game_clock.get("minute", 480))
     lines = []
     lines.append(_c(room.name, BOLD + CYAN))
@@ -208,6 +209,12 @@ def render_room(p: AgentState, room: Room) -> str:
         for npc, activity in npc_pairs:
             extra = f" ({_c(activity, DIM)})" if activity else ""
             lines.append(f"  {_c(npc.name, MAGENTA)} — {npc.title}{extra}")
+    # Other actors (humans + agents) sharing this room
+    if co_residents:
+        lines.append("")
+        lines.append(_c("Adventurers here:", BOLD))
+        for name in co_residents:
+            lines.append(f"  {_c(name, GREEN)}")
     # Mobs in this room (live)
     mobs = world_store.mobs_in_room(p.world_id, room.id, alive_only=True)
     if mobs:
@@ -238,18 +245,30 @@ class Game:
     npc_dialogue: NPCDialogue = field(default_factory=NPCDialogue)
     mob_decider: MobDecider | None = None
     show_clock: bool = True
+    # Returns display names of OTHER actors currently in the same room
+    # as `room_id`. Wired by WorldLoop; None for tests / standalone Game
+    # (in which case "Adventurers here:" never renders).
+    co_residents_fn: Callable[[str], list[str]] | None = None
 
     # Snapshot of the current room (loaded lazily)
     _room: Room | None = None
     _encounter: Encounter | None = None
     _pending_witness: list[str] = field(default_factory=list)
 
+    def _co_residents(self) -> list[str]:
+        if self.co_residents_fn is None or not self.player.room_id:
+            return []
+        try:
+            return self.co_residents_fn(self.player.room_id)
+        except Exception:
+            return []
+
     def start(self) -> list:
         self._load_room()
         msgs: list = [
             _mode("explore"),
             _output(_c(f"\r\nYou stand in {self._room.name}.\r\n", BOLD + GREEN)),
-            _output(render_room(self.player, self._room)),
+            _output(render_room(self.player, self._room, co_residents=self._co_residents())),
             _status(self.player),
             self._make_prompt(),
         ]
@@ -392,7 +411,7 @@ class Game:
         room = self._load_room()
         if not arg:
             self._advance("look")
-            return [_output(render_room(self.player, room)), self._make_prompt()]
+            return [_output(render_room(self.player, room, co_residents=self._co_residents())), self._make_prompt()]
         # look at <thing> — let DM narrate
         return self._cmd_dm(f"look at {arg}")  # chat-style is right for examining
 
@@ -434,7 +453,7 @@ class Game:
         if gen_msg:
             msgs.append(_output(gen_msg))
         msgs.extend([
-            _output(render_room(self.player, new_room)),
+            _output(render_room(self.player, new_room, co_residents=self._co_residents())),
             _status(self.player),
             self._make_prompt(),
         ])

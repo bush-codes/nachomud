@@ -178,9 +178,24 @@ class WorldLoop:
             player=state,
             dm=DM(llm=self.dm_llm),
             npc_dialogue=NPCDialogue(llm=self.npc_llm, summarizer=self.npc_summarizer),
+            co_residents_fn=lambda room_id, _aid=actor_id: self._co_residents(_aid, room_id),
         )
         return Actor(actor_id=actor_id, kind=kind, state=state, game=game,
                      agent_def=definition)
+
+    def _co_residents(self, exclude_actor_id: str, room_id: str) -> list[str]:
+        """Display names of other actors currently in `room_id`. Called
+        by Game.render_room. Read-only over self.actors — caller already
+        holds _lock (via submit_command / start_actor)."""
+        out: list[str] = []
+        for aid, a in self.actors.items():
+            if aid == exclude_actor_id:
+                continue
+            if a.state.room_id != room_id:
+                continue
+            display = (a.agent_def or {}).get("display_name") or a.state.name or aid
+            out.append(display)
+        return out
 
     def register_human(self, state: AgentState) -> Actor:
         """Register a human actor when they finish welcome / char-create.
@@ -197,6 +212,7 @@ class WorldLoop:
                     dm=DM(llm=self.dm_llm),
                     npc_dialogue=NPCDialogue(llm=self.npc_llm,
                                              summarizer=self.npc_summarizer),
+                    co_residents_fn=lambda room_id, _aid=actor_id: self._co_residents(_aid, room_id),
                 )
                 actor = existing
             else:
