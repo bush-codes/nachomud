@@ -307,6 +307,15 @@ Halfling (+2 DEX +1 CHA), Half-Orc (+2 STR +1 CON, relentless).
   cookie (required in production / HTTPS)
 - `NACHOMUD_DISABLE_AGENTS=1` — skip spawning the 4 LLM agent runners
   (set by tests so Ollama isn't required)
+- `NACHOMUD_DEV_DOCS=1` — re-enable FastAPI's auto-docs (`/docs`,
+  `/redoc`, `/openapi.json`). Off in prod so the route map isn't
+  publicly enumerable; on locally for dev tooling.
+- `NACHOMUD_AUTH_ALLOWED_EMAILS` — comma-separated allowlist for
+  `/auth/request`. Unset = wide-open (any email gets a magic link).
+  Set = only listed addresses get magic links sent; everyone else
+  receives the same `{ok: true}` response with no email actually
+  going out (don't leak which addresses are allowed). Used during
+  Coming-Soon mode.
 - `NACHOMUD_AGENT_LLM_TIMEOUT` — seconds an agent waits for the LLM
   before skipping a tick (default 30). Hard ceiling that prevents a
   wedged Ollama from parking the agent loop forever.

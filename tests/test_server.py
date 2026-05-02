@@ -101,3 +101,70 @@ def test_ws_handles_malformed_json(client):
         msg = _read_msg(ws)
         assert msg["type"] == "output"
         assert "malformed" in msg["text"].lower()
+
+
+# ── Public-surface lockdown ──
+
+def test_actors_endpoint_removed(client):
+    """GET /actors used to leak full actor state. Sidebar gets the
+    same data via WS now; the public endpoint is gone."""
+    assert client.get("/actors").status_code == 404
+
+
+def test_openapi_off_in_prod_mode(monkeypatch):
+    """Without NACHOMUD_DEV_DOCS, FastAPI's auto-docs must 404."""
+    # The fixture client uses the module-level `app`, which captured the
+    # env at import. Build a fresh app here with the prod default.
+    monkeypatch.delenv("NACHOMUD_DEV_DOCS", raising=False)
+    import importlib
+    import nachomud.server as server_mod
+    importlib.reload(server_mod)
+    c = TestClient(server_mod.app)
+    assert c.get("/docs").status_code == 404
+    assert c.get("/redoc").status_code == 404
+    assert c.get("/openapi.json").status_code == 404
+
+
+def test_openapi_on_when_dev_docs_enabled(monkeypatch):
+    """NACHOMUD_DEV_DOCS=1 re-enables the auto-docs for local dev."""
+    monkeypatch.setenv("NACHOMUD_DEV_DOCS", "1")
+    import importlib
+    import nachomud.server as server_mod
+    importlib.reload(server_mod)
+    c = TestClient(server_mod.app)
+    assert c.get("/openapi.json").status_code == 200
+    assert c.get("/docs").status_code == 200
+
+
+def test_auth_request_whitelist_blocks_non_listed(client, monkeypatch):
+    """When NACHOMUD_AUTH_ALLOWED_EMAILS is set, only listed addresses
+    actually get magic links — but the response is identical so the
+    allowlist isn't enumerable."""
+    monkeypatch.setenv("NACHOMUD_AUTH_ALLOWED_EMAILS", "ok@example.com")
+    sent: list[tuple[str, str]] = []
+    monkeypatch.setattr(auth, "send_magic_link",
+                        lambda email, link: sent.append((email, link)))
+    # Non-listed email: response is ok but no email sent.
+    r1 = client.post("/auth/request", json={"email": "evil@example.com"})
+    assert r1.status_code == 200
+    assert r1.json() == {"ok": True}
+    assert sent == []
+    # Listed email: response is ok and email IS sent.
+    r2 = client.post("/auth/request", json={"email": "ok@example.com"})
+    assert r2.status_code == 200
+    assert r2.json() == {"ok": True}
+    assert len(sent) == 1
+    assert sent[0][0] == "ok@example.com"
+
+
+def test_auth_request_no_whitelist_is_wide_open(client, monkeypatch):
+    """Without the env var, behavior is unchanged: any email gets
+    a magic link sent (privacy: leaks nothing about accounts)."""
+    monkeypatch.delenv("NACHOMUD_AUTH_ALLOWED_EMAILS", raising=False)
+    sent: list[tuple[str, str]] = []
+    monkeypatch.setattr(auth, "send_magic_link",
+                        lambda email, link: sent.append((email, link)))
+    r = client.post("/auth/request", json={"email": "anyone@example.com"})
+    assert r.status_code == 200
+    assert r.json() == {"ok": True}
+    assert len(sent) == 1

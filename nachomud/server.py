@@ -64,7 +64,19 @@ async def lifespan(app: FastAPI):
         await loop.stop()
 
 
-app = FastAPI(title="NachoMUD", lifespan=lifespan)
+# OpenAPI / Swagger / ReDoc are auto-exposed by FastAPI by default. In
+# production they leak the route map; only enable when explicitly opted
+# in (NACHOMUD_DEV_DOCS=1) so they're available locally during dev but
+# closed publicly. The static spec checked in at docs/openapi.json
+# stays the canonical reference.
+_DEV_DOCS = bool(os.environ.get("NACHOMUD_DEV_DOCS", ""))
+app = FastAPI(
+    title="NachoMUD",
+    lifespan=lifespan,
+    docs_url="/docs" if _DEV_DOCS else None,
+    redoc_url="/redoc" if _DEV_DOCS else None,
+    openapi_url="/openapi.json" if _DEV_DOCS else None,
+)
 
 # server.py lives in nachomud/; static frontend lives at <repo>/web/.
 TERMINAL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web"))
@@ -322,14 +334,6 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-@app.get("/actors")
-def actors() -> JSONResponse:
-    loop: WorldLoop | None = getattr(app.state, "world_loop", None)
-    if loop is None:
-        return JSONResponse({"actors": []})
-    return JSONResponse({"actors": loop.list_actors()})
-
-
 # ── Auth routes ──
 
 def _looks_like_email(s: str) -> bool:
@@ -339,11 +343,22 @@ def _looks_like_email(s: str) -> bool:
     return bool(local and domain and "." in domain)
 
 
+def _allowed_emails() -> set[str] | None:
+    """Whitelist for /auth/request. None means wide open. A set means
+    only those (lowercased) addresses get magic links — others receive
+    the same {ok: true} but no email is sent (don't leak which
+    addresses are on the list)."""
+    raw = os.environ.get("NACHOMUD_AUTH_ALLOWED_EMAILS", "").strip()
+    if not raw:
+        return None
+    return {e.strip().lower() for e in raw.split(",") if e.strip()}
+
+
 @app.post("/auth/request")
 async def auth_request(request: Request) -> JSONResponse:
     """Generate a magic-link token and email it. Always responds {ok: true}
-    regardless of whether the email is known — leaks nothing about which
-    addresses have accounts."""
+    regardless of whether the email is known or whitelisted — leaks
+    nothing about which addresses are accepted."""
     try:
         body = await request.json()
     except Exception:
@@ -351,6 +366,12 @@ async def auth_request(request: Request) -> JSONResponse:
     email = (body.get("email") or "").strip().lower()
     if not _looks_like_email(email):
         return JSONResponse({"ok": False, "error": "invalid email"}, status_code=400)
+    allowed = _allowed_emails()
+    if allowed is not None and email not in allowed:
+        # Same response shape as success — caller can't distinguish
+        # "not on allowlist" from "valid request, link sent."
+        log.info("auth_request: rejected non-allowlisted email")
+        return JSONResponse({"ok": True})
     token = auth.issue_token(email)
     base = str(request.base_url).rstrip("/")
     link = f"{base}/auth/verify?token={token}"
