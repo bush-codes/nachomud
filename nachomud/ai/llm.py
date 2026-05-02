@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import anthropic
 
-from nachomud.settings import ANTHROPIC_API_KEY, LLM_BACKEND, OLLAMA_BASE_URL
+from nachomud.settings import (
+    ANTHROPIC_API_KEY,
+    LLM_BACKEND,
+    OLLAMA_BASE_URL,
+    OLLAMA_HTTP_TIMEOUT_SECONDS,
+)
 
 _anthropic_client: anthropic.Anthropic | None = None
 _ollama_client = None
@@ -16,7 +21,10 @@ def _get_ollama_client():
     global _ollama_client
     if _ollama_client is None:
         import ollama
-        _ollama_client = ollama.Client(host=OLLAMA_BASE_URL)
+        _ollama_client = ollama.Client(
+            host=OLLAMA_BASE_URL,
+            timeout=OLLAMA_HTTP_TIMEOUT_SECONDS,
+        )
     return _ollama_client
 
 

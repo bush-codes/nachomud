@@ -310,6 +310,10 @@ Halfling (+2 DEX +1 CHA), Half-Orc (+2 STR +1 CON, relentless).
 - `NACHOMUD_AGENT_LLM_TIMEOUT` — seconds an agent waits for the LLM
   before skipping a tick (default 30). Hard ceiling that prevents a
   wedged Ollama from parking the agent loop forever.
+- `NACHOMUD_OLLAMA_HTTP_TIMEOUT` — seconds the Ollama HTTP client
+  waits per request before raising (default 90). Longer than
+  `NACHOMUD_AGENT_LLM_TIMEOUT` so cold model loads can finish, but
+  still bounded so abandoned requests actually clear Ollama's queue.
 
 ## Run + test
 

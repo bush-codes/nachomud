@@ -47,3 +47,12 @@ AGENT_TICK_SECONDS = float(os.environ.get("NACHOMUD_AGENT_TICK_SECONDS", "8"))
 AGENT_LLM_TIMEOUT_SECONDS = float(
     os.environ.get("NACHOMUD_AGENT_LLM_TIMEOUT", "30")
 )
+
+# Ollama HTTP client timeout. Longer than AGENT_LLM_TIMEOUT_SECONDS
+# because the agent runner abandoning the wait doesn't actually cancel
+# the in-flight HTTP request — the worker thread keeps blocking on
+# httpx until either the response arrives or this timeout fires.
+# Without it, hung calls leak threads and pile up in Ollama's queue.
+OLLAMA_HTTP_TIMEOUT_SECONDS = float(
+    os.environ.get("NACHOMUD_OLLAMA_HTTP_TIMEOUT", "90")
+)
