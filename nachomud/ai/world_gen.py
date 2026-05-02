@@ -20,6 +20,7 @@ from dataclasses import dataclass
 
 import nachomud.world.store as world_store
 from nachomud.ai.contexts import load as load_context
+from nachomud.ai.llm import LLMUnavailable
 from nachomud.models import Item, Mob, NPC, Room
 from nachomud.world.directions import VALID_DIRS, opposite
 
@@ -82,13 +83,23 @@ class WorldGen:
     def generate_room(self, source: Room, direction: str, world_id: str,
                       *, requested_id: str | None = None,
                       max_retries: int = 2) -> Room:
-        """Generate a new room and persist it across all three stores."""
+        """Generate a new room and persist it across all three stores.
+
+        Raises LLMUnavailable if the LLM is unreachable — the caller
+        (move command) should refuse the move with a "path is shrouded"
+        message rather than create a permanent stub-room that pollutes
+        the map. For other failures (malformed JSON, etc.) we fall
+        back to a stub after retries — that's a one-off content
+        glitch, not a temporary infra outage."""
         new_id = requested_id or _allocate_room_id(source.zone_tag)
         last_err: Exception | None = None
         for _attempt in range(max_retries + 1):
             try:
                 payload = self._call_room_gen(source, direction, new_id)
                 return self._materialize_room(source, direction, new_id, payload, world_id)
+            except LLMUnavailable:
+                # Don't retry — the LLM is OFF, not flaky. Bubble up.
+                raise
             except Exception as e:
                 last_err = e
                 continue

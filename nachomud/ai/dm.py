@@ -24,6 +24,7 @@ from collections.abc import Callable
 
 import nachomud.world.store as world_store
 from nachomud.ai.world_gen import WorldGen, _extract_json
+from nachomud.ai.llm import LLMUnavailable
 from nachomud.ai.contexts import load as load_context
 from nachomud.settings import DM_RECENT_EXCHANGES_CAP, LLM_SMART_MODEL
 from nachomud.models import AgentState, Item, Mob, Room
@@ -158,6 +159,10 @@ class DM:
             prompt = _build_user_prompt(player, room, message)
             try:
                 reply = self.llm(DM_PERSONA, prompt).strip()
+            except LLMUnavailable:
+                # Don't pollute dm_context with the failure — let the
+                # player retry once the LLM is back.
+                return "(The DM is silent for the moment — the world feels still.)"
             except Exception as e:
                 log.exception("DM.respond LLM call failed")
                 reply = f"(The DM's voice falters momentarily — {type(e).__name__}.)"
@@ -189,6 +194,9 @@ class DM:
             try:
                 raw = self.llm(ADJUDICATE_PERSONA, prompt)
                 payload = _extract_json(raw)
+            except LLMUnavailable:
+                payload = {"narrate": "You attempt the action, but the world feels paused — try again in a moment.",
+                           "skill_check": None, "hint": None, "actions": None}
             except Exception:
                 log.exception("DM.adjudicate LLM call failed")
                 payload = {"narrate": f"You attempt to {action}, but the gesture comes to nothing.",

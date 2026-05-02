@@ -436,9 +436,15 @@ class Game:
         if not world_store.room_exists(self.player.world_id, dest):
             # Trigger DM-driven generation. Use the placeholder ID as the new room ID
             # so the source room's existing exit pointer remains valid.
+            from nachomud.ai.llm import LLMUnavailable
             try:
                 self.dm.generate_room(room, direction, self.player.world_id, requested_id=dest)
                 gen_msg = _c("(The land takes shape as you step into it...)\r\n", DIM)
+            except LLMUnavailable:
+                # GPU box is off — refuse the move rather than create a
+                # stub-room that pollutes the world map permanently.
+                return [_output(_c(f"The path {direction} is shrouded — try again later.\r\n", DIM)),
+                        self._make_prompt()]
             except Exception as e:
                 return [_output(_c(f"The way {direction} resists you ({type(e).__name__}).\r\n", RED)),
                         self._make_prompt()]
