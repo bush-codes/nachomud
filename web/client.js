@@ -33,6 +33,11 @@
   const logoutBtn = document.getElementById('logout-link');
   const termEl = document.getElementById('term');
   const landingEl = document.getElementById('landing');
+  // Auth form was removed during the Coming-Soon period. The send-link /
+  // email-input / auth-msg elements no longer exist; their handlers below
+  // are gated on element presence so this still works once we add a form
+  // back. Until then, /auth/request can be POSTed directly for the
+  // operator to sign in.
   const emailInput = document.getElementById('email-input');
   const sendBtn = document.getElementById('send-link');
   const authMsg = document.getElementById('auth-msg');
@@ -83,7 +88,7 @@
     // URL housekeeping — render auth=invalid notice; strip the auth= param.
     try {
       const params = new URLSearchParams(location.search);
-      if (params.get('auth') === 'invalid') {
+      if (params.get('auth') === 'invalid' && authMsg) {
         authMsg.textContent = 'That sign-in link expired or was already used. Try again.';
         authMsg.className = 'err';
       }
@@ -106,43 +111,46 @@
   });
 
   // ── Sign-in form handler ──
-  async function submitEmail() {
-    const email = (emailInput.value || '').trim();
-    if (!email || !email.includes('@')) {
-      authMsg.textContent = 'Enter a valid email address.';
-      authMsg.className = 'err';
-      return;
-    }
-    sendBtn.disabled = true;
-    authMsg.textContent = 'Sending…';
-    authMsg.className = '';
-    try {
-      const r = await fetch('/auth/request', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
-        body: JSON.stringify({ email }),
-      });
-      const data = await r.json();
-      if (data.ok) {
-        authMsg.textContent = `Check ${email} for a sign-in link.`;
-        authMsg.className = 'ok';
-        emailInput.disabled = true;
-      } else {
-        authMsg.textContent = data.error || 'Could not send the link.';
+  // Skip wiring entirely if the form isn't in the DOM (Coming-Soon mode).
+  if (sendBtn && emailInput && authMsg) {
+    async function submitEmail() {
+      const email = (emailInput.value || '').trim();
+      if (!email || !email.includes('@')) {
+        authMsg.textContent = 'Enter a valid email address.';
+        authMsg.className = 'err';
+        return;
+      }
+      sendBtn.disabled = true;
+      authMsg.textContent = 'Sending…';
+      authMsg.className = '';
+      try {
+        const r = await fetch('/auth/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ email }),
+        });
+        const data = await r.json();
+        if (data.ok) {
+          authMsg.textContent = `Check ${email} for a sign-in link.`;
+          authMsg.className = 'ok';
+          emailInput.disabled = true;
+        } else {
+          authMsg.textContent = data.error || 'Could not send the link.';
+          authMsg.className = 'err';
+          sendBtn.disabled = false;
+        }
+      } catch (_) {
+        authMsg.textContent = 'Network error — try again.';
         authMsg.className = 'err';
         sendBtn.disabled = false;
       }
-    } catch (_) {
-      authMsg.textContent = 'Network error — try again.';
-      authMsg.className = 'err';
-      sendBtn.disabled = false;
     }
+    sendBtn.addEventListener('click', submitEmail);
+    emailInput.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') submitEmail();
+    });
   }
-  sendBtn.addEventListener('click', submitEmail);
-  emailInput.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') submitEmail();
-  });
 
   // ── Cookie consent banner ──
   const COOKIE_ACK_KEY = 'nachomud.cookie_acked';
