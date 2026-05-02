@@ -316,3 +316,33 @@ def test_migration_raises_when_no_path_registered():
     from nachomud.characters.migrations import migrate
     with pytest.raises(ValueError):
         migrate("unknown_entity", {"schema_version": 0}, target_version=1)
+
+
+def test_dm_ollama_url_round_trip(tmp_data_dirs):
+    """Per-character DM-tier Ollama URL persists across save/load."""
+    s = Stats(STR=15, DEX=12, CON=14, INT=8, WIS=10, CHA=13)
+    p = create_character("Aric", "Dwarf", "Warrior", s, player_id="player-1")
+    p.dm_ollama_url = "http://100.67.248.3:11434"
+    player_mod.save_player(p)
+    p2 = player_mod.load_player("player-1")
+    assert p2.dm_ollama_url == "http://100.67.248.3:11434"
+
+
+def test_v1_player_save_loads_with_empty_dm_url(tmp_data_dirs):
+    """Pre-v2 saves (no dm_ollama_url field) load with the field
+    defaulted to empty — not a load failure."""
+    import json
+    s = Stats(STR=15, DEX=12, CON=14, INT=8, WIS=10, CHA=13)
+    p = create_character("Aric", "Dwarf", "Warrior", s, player_id="player-1")
+    player_mod.save_player(p)
+    path = player_mod.player_path("player-1")
+    with open(path) as f:
+        payload = json.load(f)
+    payload["schema_version"] = 1
+    payload.pop("dm_ollama_url", None)
+    with open(path, "w") as f:
+        json.dump(payload, f)
+
+    p2 = player_mod.load_player("player-1")
+    assert p2.name == "Aric"
+    assert p2.dm_ollama_url == ""

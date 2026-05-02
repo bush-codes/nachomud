@@ -14,10 +14,11 @@ import os
 from dataclasses import asdict, fields
 from typing import Any
 
+from nachomud.characters import player_migrations  # noqa: F401  (registers v1→v2)
 from nachomud.characters.migrations import migrate
 from nachomud.models import AgentState, Item, StatusEffect
 
-SCHEMA_VERSION_PLAYER = 1
+SCHEMA_VERSION_PLAYER = 2
 
 DATA_ROOT = os.environ.get("NACHOMUD_PLAYERS_ROOT", os.path.join("data", "players"))
 
@@ -94,6 +95,7 @@ def player_to_dict(p: AgentState) -> dict:
             "npc_chats": dict(p.dm_context.get("npc_chats", {})),
         },
         "visited_rooms": list(p.visited_rooms),
+        "dm_ollama_url": p.dm_ollama_url,
         "schema_version": SCHEMA_VERSION_PLAYER,
     }
 
@@ -142,6 +144,7 @@ def player_from_dict(d: dict) -> AgentState:
         dm_context=dict(d.get("dm_context", {"recent_exchanges": [], "summary": "", "pending_hints": []})),
         visited_rooms=list(d.get("visited_rooms", [])),
         gold=int(d.get("gold", 0)),
+        dm_ollama_url=str(d.get("dm_ollama_url", "")),
     )
 
 

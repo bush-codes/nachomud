@@ -180,6 +180,13 @@ class AgentState:
     dm_context: dict = field(default_factory=lambda: {"recent_exchanges": [], "summary": "", "pending_hints": []})
     gold: int = 0
 
+    # Per-character Ollama URL the DM tier hits for this player. Set
+    # during character creation. Empty for the 4 built-in agents (they
+    # always use the operator's AGENT_OLLAMA_URL); empty for human chars
+    # only when char-create was bypassed (legacy saves) — DM calls then
+    # surface "the world feels still" until the player sets a URL.
+    dm_ollama_url: str = ""
+
 
 @dataclass
 class GameEvent:
