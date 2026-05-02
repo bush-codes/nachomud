@@ -68,3 +68,55 @@ def test_tick_submits_command_on_normal_reply(monkeypatch):
     asyncio.run(runner._tick_once(world_loop, actor, lambda s, u: "n"))
 
     assert world_loop.submitted == [("agent_test", "n")]
+
+
+# ── Combat prompt + fallback ──
+
+class _FakeRoom:
+    id = "room_1"
+
+
+def _combat_actor(abilities=("attack", "defend")):
+    state = SimpleNamespace(
+        name="Grosh", race="Half-Orc", agent_class="Warrior", level=1,
+        hp=12, max_hp=12, mp=0, max_mp=0, ap=10, max_ap=10,
+        abilities=list(abilities), action_history=[], world_id="default",
+        room_id="room_1", game_clock={"minute": 480},
+    )
+    return SimpleNamespace(actor_id="agent_test", state=state,
+                           agent_def={"system_prompt": "be brief"})
+
+
+def test_combat_prompt_lists_actual_abilities_and_strips_exits():
+    """Combat prompt must enumerate the agent's abilities literally
+    (so the LLM doesn't have to invent them) and must NOT show exits
+    (which would tempt movement, which doesn't work in combat)."""
+    actor = _combat_actor(abilities=("attack", "defend", "smite", "lay_on_hands"))
+    snap = {"state": actor.state, "room": None, "in_combat": True}
+    prompt = runner.build_user_prompt(snap)
+    assert "Combat commands available: attack, defend, smite, lay_on_hands, flee" in prompt
+    assert "YOU ARE IN COMBAT" in prompt
+    assert "Exits:" not in prompt
+    # Sanity: explore-mode help text doesn't leak in
+    assert "n/s/e/w/up/down" not in prompt
+
+
+def test_coerce_combat_substitutes_attack_for_movement(monkeypatch):
+    """LLM picks `north` while in combat — fallback turns it into
+    `attack <first hostile>` so the round actually advances."""
+    actor = _combat_actor()
+    fake_mob = SimpleNamespace(name="Wild Boar", hp=10, max_hp=10)
+    monkeypatch.setattr(runner.world_store, "mobs_in_room",
+                        lambda _w, _r, alive_only=True: [fake_mob])
+    snap = {"state": actor.state, "room": _FakeRoom(), "in_combat": True}
+    out = runner._coerce_combat_command("north", actor, snap)
+    assert out == "attack Wild Boar"
+
+
+def test_coerce_combat_passes_through_valid_ability():
+    """If the LLM picks a real ability, leave it alone."""
+    actor = _combat_actor(abilities=("attack", "smite"))
+    snap = {"state": actor.state, "room": _FakeRoom(), "in_combat": True}
+    assert runner._coerce_combat_command("smite Wild Boar", actor, snap) == "smite Wild Boar"
+    assert runner._coerce_combat_command("attack Wild Boar", actor, snap) == "attack Wild Boar"
+    assert runner._coerce_combat_command("flee", actor, snap) == "flee"

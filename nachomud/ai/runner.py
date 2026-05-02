@@ -48,19 +48,57 @@ def _snapshot(actor: Actor) -> dict:
 
 
 def build_user_prompt(snap: dict) -> str:
-    state: AgentState = snap["state"]
-    room: Room | None = snap["room"]
-    in_combat = snap["in_combat"]
+    if snap["in_combat"]:
+        return _build_combat_prompt(snap)
+    return _build_explore_prompt(snap)
 
-    parts: list[str] = []
-    parts.append(f"You are {state.name} the {state.race} {state.agent_class} "
-                 f"(L{state.level}).")
+
+def _identity_lines(state: AgentState) -> list[str]:
     bar = f"HP {state.hp}/{state.max_hp}"
     if state.max_mp:
         bar += f"  MP {state.mp}/{state.max_mp}"
     if state.max_ap:
         bar += f"  AP {state.ap}/{state.max_ap}"
-    parts.append(bar)
+    return [
+        f"You are {state.name} the {state.race} {state.agent_class} (L{state.level}).",
+        bar,
+    ]
+
+
+def _build_combat_prompt(snap: dict) -> str:
+    """Combat-specific prompt. Strips exits/items/NPCs/description (none
+    advance the turn) and lists the agent's actual ability names so the
+    LLM doesn't have to guess from an abstract `<ability>` placeholder."""
+    state: AgentState = snap["state"]
+    room: Room | None = snap["room"]
+    parts: list[str] = _identity_lines(state)
+
+    if room is not None:
+        mobs = world_store.mobs_in_room(state.world_id, room.id, alive_only=True)
+        if mobs:
+            parts.append("")
+            parts.append("Enemies in combat with you:")
+            parts.extend(f"  - {m.name} (HP {m.hp}/{m.max_hp})" for m in mobs)
+
+    parts.append("")
+    parts.append("⚔ YOU ARE IN COMBAT — your turn ⚔")
+    parts.append("Movement, look, get, talk, dm — none of these advance the turn.")
+    abilities = list(state.abilities or [])
+    if "attack" not in abilities:
+        abilities.insert(0, "attack")
+    parts.append("Combat commands available: " + ", ".join(abilities) + ", flee.")
+    parts.append("Most take a target: `<command> <enemy name>` "
+                 "(e.g. `attack Wild Boar`, `smite Wild Boar`). "
+                 "Mix it up — abilities are usually more interesting than plain attack.")
+    parts.append("Reply with ONE line: just the command. No commentary, no quotes.")
+    return "\n".join(parts)
+
+
+def _build_explore_prompt(snap: dict) -> str:
+    state: AgentState = snap["state"]
+    room: Room | None = snap["room"]
+
+    parts: list[str] = _identity_lines(state)
     if state.abilities:
         parts.append(f"Abilities: {', '.join(state.abilities)}")
 
@@ -91,15 +129,10 @@ def build_user_prompt(snap: dict) -> str:
                      + " | ".join(state.action_history[-5:]))
 
     parts.append("")
-    if in_combat:
-        parts.append("YOU ARE IN COMBAT. Pick exactly one combat command: "
-                     "`attack <target>`, `<ability> <target>` (one of your abilities), "
-                     "or `flee`.")
-    else:
-        parts.append("Pick exactly one command. Movement: n/s/e/w/up/down. "
-                     "`look`, `map`, `talk <npc>`, `dm <message>`, `attack <mob>`, "
-                     "`get <item>`, `wait`. Free-form actions also work — they go "
-                     "to the Dungeon Master for adjudication.")
+    parts.append("Pick exactly one command. Movement: n/s/e/w/up/down. "
+                 "`look`, `map`, `talk <npc>`, `dm <message>`, `attack <mob>`, "
+                 "`get <item>`, `wait`. Free-form actions also work — they go "
+                 "to the Dungeon Master for adjudication.")
     parts.append("Reply with ONE line: just the command. No commentary, no quotes.")
     return "\n".join(parts)
 
@@ -156,9 +189,9 @@ async def _tick_once(world_loop, actor: Actor, llm_fn: LLMFn) -> None:
     def _snapshot_locked():
         with world_loop._lock:
             snap = _snapshot(actor)
-            return build_user_prompt(snap)
+            return snap, build_user_prompt(snap)
 
-    user_prompt = await asyncio.to_thread(_snapshot_locked)
+    snap, user_prompt = await asyncio.to_thread(_snapshot_locked)
     system_prompt = (actor.agent_def or {}).get("system_prompt", "")
 
     try:
@@ -177,7 +210,29 @@ async def _tick_once(world_loop, actor: Actor, llm_fn: LLMFn) -> None:
         log.exception("LLM call failed for %s — skipping tick", actor.actor_id)
         return
     command = parse_command(reply)
+    if snap.get("in_combat"):
+        command = _coerce_combat_command(command, actor, snap)
+    log.info("agent %s -> %s", actor.actor_id, command)
     await asyncio.to_thread(_submit_with_echo, world_loop, actor.actor_id, command)
+
+
+def _coerce_combat_command(command: str, actor: Actor, snap: dict) -> str:
+    """If the LLM picked a non-combat verb while in combat, substitute
+    `attack <first hostile>` so the turn at least advances. Without
+    this, an invalid combat command just sits and combat stalls
+    indefinitely (handle_player_input rejects it without progressing
+    the round)."""
+    first = command.split()[0].lower() if command else ""
+    valid = {"attack", "defend", "flee", "look", "status", "help"}
+    valid.update(a.lower() for a in (actor.state.abilities or []))
+    if first in valid:
+        return command
+    room = snap.get("room")
+    if room is not None:
+        mobs = world_store.mobs_in_room(actor.state.world_id, room.id, alive_only=True)
+        if mobs:
+            return f"attack {mobs[0].name}"
+    return "flee"
 
 
 def _submit_with_echo(world_loop, actor_id: str, command: str) -> None:
